@@ -56,6 +56,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get pivoted leaderboard data (benchmarks as columns)
+  app.get("/api/leaderboard-pivoted", async (req, res) => {
+    try {
+      const results = await storage.getAllBenchmarkResults();
+
+      // Group by (model, agent) combination
+      const groupedData = new Map<string, {
+        modelName: string;
+        agentName: string;
+        benchmarks: Record<string, { accuracy: number; standardError: number }>;
+      }>();
+
+      for (const result of results) {
+        const key = `${result.modelName}|||${result.agentName}`;
+
+        if (!groupedData.has(key)) {
+          groupedData.set(key, {
+            modelName: result.modelName,
+            agentName: result.agentName,
+            benchmarks: {}
+          });
+        }
+
+        const group = groupedData.get(key)!;
+        group.benchmarks[result.benchmarkName] = {
+          accuracy: result.accuracy,
+          standardError: result.standardError
+        };
+      }
+
+      // Convert to array and sort by model name, then agent name
+      const pivotedData = Array.from(groupedData.values()).sort((a, b) => {
+        const modelCompare = a.modelName.localeCompare(b.modelName);
+        if (modelCompare !== 0) return modelCompare;
+        return a.agentName.localeCompare(b.agentName);
+      });
+
+      res.json(pivotedData);
+    } catch (error) {
+      console.error("Error fetching pivoted leaderboard:", error);
+      res.status(500).json({ error: "Failed to fetch pivoted leaderboard" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

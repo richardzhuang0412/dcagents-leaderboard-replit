@@ -9,3 +9,5 @@ vite.config.ts.*
 .config
 .npmrc
 .env
+CLAUDE.md
+development_progress.md

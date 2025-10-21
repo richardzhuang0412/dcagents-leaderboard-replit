@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import SearchBar from '@/components/SearchBar';
 import FilterControls from '@/components/FilterControls';
-import LeaderboardTable, { type BenchmarkResult } from '@/components/LeaderboardTable';
+import LeaderboardTable, { type PivotedLeaderboardRow } from '@/components/LeaderboardTable';
 import ThemeToggle from '@/components/ThemeToggle';
 import { queryClient } from '@/lib/queryClient';
 
@@ -16,9 +16,9 @@ export default function Leaderboard() {
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
   const [selectedBenchmarks, setSelectedBenchmarks] = useState<string[]>([]);
-  
-  const { data: benchmarkData = [], isLoading, refetch } = useQuery<BenchmarkResult[]>({
-    queryKey: ['/api/benchmark-results'],
+
+  const { data: pivotedData = [], isLoading, refetch } = useQuery<PivotedLeaderboardRow[]>({
+    queryKey: ['/api/leaderboard-pivoted'],
   });
 
   const handleRefresh = () => {
@@ -26,16 +26,20 @@ export default function Leaderboard() {
   };
 
   const availableModels = useMemo(() => {
-    return Array.from(new Set(benchmarkData.map((item) => item.modelName))).sort();
-  }, [benchmarkData]);
+    return Array.from(new Set(pivotedData.map((item) => item.modelName))).sort();
+  }, [pivotedData]);
 
   const availableAgents = useMemo(() => {
-    return Array.from(new Set(benchmarkData.map((item) => item.agentName))).sort();
-  }, [benchmarkData]);
+    return Array.from(new Set(pivotedData.map((item) => item.agentName))).sort();
+  }, [pivotedData]);
 
   const availableBenchmarks = useMemo(() => {
-    return Array.from(new Set(benchmarkData.map((item) => item.benchmarkName))).sort();
-  }, [benchmarkData]);
+    const benchmarkSet = new Set<string>();
+    pivotedData.forEach(row => {
+      Object.keys(row.benchmarks).forEach(benchmark => benchmarkSet.add(benchmark));
+    });
+    return Array.from(benchmarkSet).sort();
+  }, [pivotedData]);
 
   const handleClearFilters = () => {
     setSelectedModels([]);
@@ -64,7 +68,7 @@ export default function Leaderboard() {
                 LLM Agent Benchmark
               </h1>
               <Badge variant="secondary" data-testid="text-total-entries">
-                {benchmarkData.length} entries
+                {pivotedData.length} rows
               </Badge>
             </div>
             <div className="flex items-center gap-2">
@@ -108,7 +112,7 @@ export default function Leaderboard() {
           />
 
           <LeaderboardTable
-            data={benchmarkData}
+            data={pivotedData}
             modelSearch={modelSearch}
             agentSearch={agentSearch}
             benchmarkSearch={benchmarkSearch}

@@ -68,7 +68,7 @@ export default function SearchBar({
           type="search"
           value={benchmarkSearch}
           onChange={(e) => onBenchmarkSearchChange(e.target.value)}
-          placeholder="Search benchmarks..."
+          placeholder="Filter benchmark columns..."
           className="pl-9 pr-9"
           data-testid="input-search-benchmark"
         />

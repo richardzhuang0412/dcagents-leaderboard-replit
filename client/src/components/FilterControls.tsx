@@ -141,7 +141,7 @@ export default function FilterControls({
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" data-testid="button-filter-benchmarks">
               <Filter className="w-4 h-4 mr-2" />
-              Benchmarks
+              Benchmark Columns
               {selectedBenchmarks.length > 0 && (
                 <Badge variant="secondary" className="ml-2 px-1.5 py-0 text-xs">
                   {selectedBenchmarks.length}
@@ -151,7 +151,7 @@ export default function FilterControls({
           </PopoverTrigger>
           <PopoverContent className="w-64" align="start">
             <div className="space-y-3">
-              <h4 className="font-medium text-sm">Filter by Benchmark</h4>
+              <h4 className="font-medium text-sm">Show Benchmark Columns</h4>
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {availableBenchmarks.map((benchmark) => (
                   <div key={benchmark} className="flex items-center gap-2">
