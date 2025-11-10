@@ -183,16 +183,16 @@ export default function LeaderboardTable({
             target="_blank"
             rel="noopener noreferrer"
             title="View traces"
-            className="inline-flex items-center justify-center w-5 h-5 rounded border border-border hover:bg-muted hover:border-primary transition-colors"
+            className="inline-flex items-center justify-center w-5 h-5 rounded border-2 border-primary bg-primary/10 hover:bg-primary/20 hover:border-primary transition-colors"
           >
-            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
+            <ExternalLink className="w-3.5 h-3.5 text-primary" />
           </a>
         ) : (
           <div
             title="Traces link not available"
-            className="inline-flex items-center justify-center w-5 h-5 rounded border border-border bg-muted/30 cursor-not-allowed"
+            className="inline-flex items-center justify-center w-5 h-5 rounded border border-muted-foreground/20 bg-muted/50 cursor-not-allowed"
           >
-            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/50" />
+            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/40" />
           </div>
         )}
         <div className="flex flex-col items-end gap-0.5">
