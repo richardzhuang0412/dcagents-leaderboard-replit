@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 export interface BenchmarkResult {
@@ -14,7 +14,7 @@ export interface BenchmarkResult {
 export interface PivotedLeaderboardRow {
   modelName: string;
   agentName: string;
-  benchmarks: Record<string, { accuracy: number; standardError: number }>;
+  benchmarks: Record<string, { accuracy: number; standardError: number; hfTracesLink?: string }>;
 }
 
 interface LeaderboardTableProps {
@@ -170,19 +170,39 @@ export default function LeaderboardTable({
     return 'text-foreground';
   };
 
-  const formatBenchmarkCell = (benchmarkData?: { accuracy: number; standardError: number }) => {
+  const formatBenchmarkCell = (benchmarkData?: { accuracy: number; standardError: number; hfTracesLink?: string }) => {
     if (!benchmarkData) {
       return <span className="text-muted-foreground text-sm">—</span>;
     }
 
     return (
-      <div className="flex flex-col items-end gap-0.5">
-        <span className={`font-mono font-semibold ${getAccuracyColor(benchmarkData.accuracy)}`}>
-          {benchmarkData.accuracy.toFixed(1)}%
-        </span>
-        <span className="font-mono text-xs text-muted-foreground">
-          ±{benchmarkData.standardError.toFixed(2)}
-        </span>
+      <div className="flex items-center gap-2 justify-end">
+        {benchmarkData.hfTracesLink ? (
+          <a
+            href={benchmarkData.hfTracesLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="View traces"
+            className="inline-flex items-center justify-center w-5 h-5 rounded border border-border hover:bg-muted hover:border-primary transition-colors"
+          >
+            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
+          </a>
+        ) : (
+          <div
+            title="Traces link not available"
+            className="inline-flex items-center justify-center w-5 h-5 rounded border border-border bg-muted/30 cursor-not-allowed"
+          >
+            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/50" />
+          </div>
+        )}
+        <div className="flex flex-col items-end gap-0.5">
+          <span className={`font-mono font-semibold ${getAccuracyColor(benchmarkData.accuracy)}`}>
+            {benchmarkData.accuracy.toFixed(1)}%
+          </span>
+          <span className="font-mono text-xs text-muted-foreground">
+            ±{benchmarkData.standardError.toFixed(2)}
+          </span>
+        </div>
       </div>
     );
   };

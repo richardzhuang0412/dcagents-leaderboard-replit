@@ -61,6 +61,7 @@ export const sandboxJobs = pgTable("sandbox_jobs", {
   modelId: uuid("model_id").notNull().references(() => models.id),
   benchmarkId: uuid("benchmark_id").notNull().references(() => benchmarks.id),
   nRepEval: integer("n_rep_eval").notNull(),
+  hfTracesLink: text("hf_traces_link"),
 });
 
 export const sandboxTasks = pgTable("sandbox_tasks", {

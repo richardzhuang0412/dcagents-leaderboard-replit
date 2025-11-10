@@ -11,29 +11,36 @@ An LLM Agent Benchmark Leaderboard web application for displaying and comparing 
 ### Starting the Application
 
 ```bash
-# Development mode (with hot reload)
+# Development mode (with hot reload on port 5000)
 npm run dev
 
-# Production build
+# Production build (outputs to dist/)
 npm run build
 
-# Start production server
+# Start production server (runs dist/index.js)
 npm start
-```
 
-The application serves on port 5000 by default (configurable via `PORT` environment variable). In development, Vite middleware provides HMR for the React frontend.
-
-### Database Management
-
-```bash
-# Push schema changes to database (creates/updates tables)
-npm run db:push
-
-# Type checking
+# Type checking (no compilation)
 npm run check
 ```
 
-**Important**: The `DATABASE_URL` environment variable must be set before running the application. The database connection requires PostgreSQL (using Neon serverless driver).
+The application serves on port 5000 by default (configurable via `PORT` environment variable). In development, Vite provides HMR for the React frontend.
+
+### Environment Setup
+
+The `.env` file must contain Supabase credentials:
+```bash
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
+
+**Database Initialization** (one-time only after `.env` is set):
+```bash
+# Create the leaderboard_results view in Supabase
+# - Run create_leaderboard_view.sql in Supabase SQL Editor, OR
+# - Use: npm run db:push (requires Drizzle setup)
+```
 
 ## Architecture Overview
 
@@ -182,4 +189,65 @@ The pivoting happens in `server/routes.ts` at the `/api/leaderboard-pivoted` end
 - No pagination - all results fetched at once
 - Filtering and sorting happen client-side after fetching all data
 - The leaderboard always shows the **latest** result per (model, agent, benchmark) combination
-- Data source is Supabase, not local Drizzle (legacy `benchmark_results` table not used)
+- Data source is Supabase `leaderboard_results` view, not local Drizzle tables
+- Legacy `benchmark_results` table and Drizzle ORM setup not actively used
+
+## Troubleshooting
+
+### "SUPABASE_URL must be set"
+- Ensure `.env` file exists in project root
+- Verify it contains `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`
+- Restart dev server after updating `.env`
+
+### "relation 'leaderboard_results' does not exist"
+- The database view hasn't been created yet
+- Run `create_leaderboard_view.sql` in Supabase SQL Editor (see README.md for steps)
+- Verify with: `SELECT COUNT(*) FROM leaderboard_results;` in Supabase
+
+### "No results found" in leaderboard
+- Check if Supabase has evaluation data: `SELECT COUNT(*) FROM sandbox_jobs WHERE metrics IS NOT NULL;`
+- Verify metrics format: `SELECT metrics FROM sandbox_jobs LIMIT 1;` (should contain `accuracy` and `accuracy_stderr`)
+- Ensure jobs are linked to agents, models, and benchmarks via foreign keys
+
+### Port 5000 already in use
+- Use a different port: `PORT=5001 npm run dev`
+- Or find and kill the process: `lsof -ti:5000 | xargs kill`
+
+### npm/yarn dependency issues
+- For platform-specific Rollup issues: `rm -rf node_modules package-lock.json && npm install`
+- Or use Yarn instead: `yarn install && yarn dev` (Yarn handles optional dependencies better)
+
+## Modifications and Customization
+
+### Changing Benchmark Columns
+
+To add, remove, or modify benchmark columns in the leaderboard:
+1. Ensure the benchmark data exists in Supabase (`benchmarks` table)
+2. The `/api/leaderboard-pivoted` endpoint will automatically include all benchmarks from the view
+3. Use the benchmark filter/search in the UI to show/hide specific benchmarks
+
+### Displaying Additional Metrics
+
+Currently, the leaderboard displays `accuracy ± standard_error` per benchmark. To add other metrics:
+1. Update the `leaderboard_results` view SQL to extract additional metrics from `sandbox_jobs.metrics` (JSONB)
+2. Update the pivoted response structure in `server/routes.ts:34-48`
+3. Modify `LeaderboardTable.tsx` to display the new metrics in the table cells
+
+### Customizing Table Appearance
+
+- Column sorting: Implemented in `LeaderboardTable.tsx` (click headers to sort)
+- Cell formatting: Edit `LeaderboardTable.tsx` to change how accuracy/error are displayed
+- Color schemes: Uses Tailwind CSS classes; update dark/light theme in `client/src/pages/Leaderboard.tsx`
+- Styling follows design guidelines in `design_guidelines.md`
+
+## File Structure Reference
+
+Key files for common modifications:
+- **Client UI**: `client/src/pages/Leaderboard.tsx` - Main layout and state
+- **Data Display**: `client/src/components/LeaderboardTable.tsx` - Table rendering and sorting
+- **Filtering**: `client/src/components/FilterControls.tsx` and `SearchBar.tsx` - Filter UI
+- **API**: `server/routes.ts` - `/api/leaderboard-pivoted` endpoint (data transformation)
+- **Data Access**: `server/storage.ts` - Database query abstraction
+- **Database**: `create_leaderboard_view.sql` - Supabase view definition
+- **Types**: `shared/schema.ts` - Shared TypeScript types and Zod schemas
+- Do not write unnecessary progress summary files, put all summary/progresses under PROGRESS.md

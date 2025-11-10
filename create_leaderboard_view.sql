@@ -22,7 +22,8 @@ SELECT DISTINCT ON (a.name, m.name, b.name)
     FROM jsonb_array_elements(sj.metrics) elem
     WHERE elem->>'name' = 'accuracy_stderr'
     LIMIT 1
-  ) as standard_error
+  ) as standard_error,
+  sj.hf_traces_link as hf_traces_link
 FROM sandbox_jobs sj
 INNER JOIN agents a ON sj.agent_id = a.id
 INNER JOIN models m ON sj.model_id = m.id

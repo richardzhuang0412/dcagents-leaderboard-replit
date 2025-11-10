@@ -65,7 +65,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const groupedData = new Map<string, {
         modelName: string;
         agentName: string;
-        benchmarks: Record<string, { accuracy: number; standardError: number }>;
+        benchmarks: Record<string, { accuracy: number; standardError: number; hfTracesLink?: string }>;
       }>();
 
       for (const result of results) {
@@ -82,7 +82,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const group = groupedData.get(key)!;
         group.benchmarks[result.benchmarkName] = {
           accuracy: result.accuracy,
-          standardError: result.standardError
+          standardError: result.standardError,
+          hfTracesLink: result.hfTracesLink
         };
       }
 

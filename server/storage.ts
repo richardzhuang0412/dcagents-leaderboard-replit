@@ -35,6 +35,7 @@ export class DbStorage implements IStorage {
       benchmarkName: row.benchmark_name,
       accuracy: row.accuracy ?? 0,
       standardError: row.standard_error ?? 0,
+      hfTracesLink: row.hf_traces_link,
     }));
   }
 
