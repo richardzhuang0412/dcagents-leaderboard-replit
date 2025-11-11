@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Info } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -110,6 +110,11 @@ export default function Leaderboard() {
             onBenchmarksChange={setSelectedBenchmarks}
             onClearAll={handleClearFilters}
           />
+
+          <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 rounded-md text-sm text-muted-foreground">
+            <Info className="w-4 h-4 flex-shrink-0" />
+            <span>Standard error calculated over 3 runs</span>
+          </div>
 
           <LeaderboardTable
             data={pivotedData}

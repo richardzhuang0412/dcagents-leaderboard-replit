@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -41,6 +41,8 @@ export default function LeaderboardTable({
 }: LeaderboardTableProps) {
   const [sortField, setSortField] = useState<SortField>('modelName');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const tableScrollContainerRef = useRef<HTMLDivElement>(null);
+  const topScrollBarRef = useRef<HTMLDivElement>(null);
 
   // Get all unique benchmark names from the data
   const allBenchmarks = useMemo(() => {
@@ -151,6 +153,18 @@ export default function LeaderboardTable({
     }
   };
 
+  const handleTableScroll = () => {
+    if (tableScrollContainerRef.current && topScrollBarRef.current) {
+      topScrollBarRef.current.scrollLeft = tableScrollContainerRef.current.scrollLeft;
+    }
+  };
+
+  const handleTopScrollBarScroll = () => {
+    if (tableScrollContainerRef.current && topScrollBarRef.current) {
+      tableScrollContainerRef.current.scrollLeft = topScrollBarRef.current.scrollLeft;
+    }
+  };
+
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) {
       return <ChevronsUpDown className="w-4 h-4 text-muted-foreground" />;
@@ -211,7 +225,15 @@ export default function LeaderboardTable({
 
   return (
     <div className="border border-border rounded-md overflow-hidden">
-      <div className="overflow-x-auto">
+      <div
+        ref={topScrollBarRef}
+        onScroll={handleTopScrollBarScroll}
+        className="overflow-x-auto overflow-y-hidden"
+        style={{ height: '8px' }}
+      >
+        <div style={{ width: '100%', height: '1px' }} />
+      </div>
+      <div className="overflow-x-auto" ref={tableScrollContainerRef} onScroll={handleTableScroll}>
         <table className="w-full">
           <thead className="bg-muted/50 sticky top-0 z-10">
             <tr className="border-b border-border">
