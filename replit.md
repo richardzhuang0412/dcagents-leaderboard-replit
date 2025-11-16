@@ -4,6 +4,15 @@
 
 This is a data-focused web application for displaying and comparing LLM agent benchmark results. The system presents a leaderboard interface where users can search, filter, and sort benchmark performance data across different models, agents, and benchmark types. The application emphasizes clarity, scannability, and efficient data interaction with a professional, research-appropriate aesthetic.
 
+## Recent Changes
+
+**November 16, 2025 - Replit Environment Setup**
+- Imported from GitHub and configured for Replit
+- Updated server to bind to 0.0.0.0 for Replit proxy compatibility
+- Configured workflow to run dev server on port 5000
+- Connected to Supabase database (credentials stored in Replit Secrets)
+- Deployment configured for autoscale with build and production commands
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
@@ -64,14 +73,15 @@ Preferred communication style: Simple, everyday language.
 ### Data Storage
 
 **Database:**
-- PostgreSQL (via Neon serverless database driver)
-- Drizzle ORM for type-safe database queries
-- Schema-first approach with Drizzle Zod integration
+- Supabase PostgreSQL database (external, not local)
+- Supabase JS client for database access
+- Data accessed through `leaderboard_results` view in Supabase
 
 **Schema Design:**
-- Single `benchmark_results` table stores all benchmark data
-- Fields: id (UUID), modelName, agentName, benchmarkName, accuracy, standardError
-- No relationships - flat denormalized structure for read optimization
+- Supabase tables: agents, models, benchmarks, sandbox_jobs, sandbox_trials
+- `leaderboard_results` view aggregates benchmark data from sandbox_jobs
+- View extracts accuracy metrics from JSONB and deduplicates by (agent, model, benchmark)
+- Legacy `benchmark_results` table defined but not used
 
 **Data Access Pattern:**
 - Repository pattern via `DbStorage` class implementing `IStorage` interface
