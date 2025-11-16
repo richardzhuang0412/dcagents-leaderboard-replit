@@ -62,7 +62,7 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
-  const host = process.env.HOST || "127.0.0.1"; // Use 127.0.0.1 for local dev, 0.0.0.0 for production
+  const host = process.env.HOST || "0.0.0.0"; // Use 0.0.0.0 to allow proxy access in Replit
   server.listen(port, host, () => {
     log(`serving on ${host}:${port}`);
   });
