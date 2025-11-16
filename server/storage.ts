@@ -14,7 +14,7 @@ export class DbStorage implements IStorage {
   async getAllBenchmarkResults(): Promise<BenchmarkResult[]> {
     // Query the leaderboard_results view
     // This view aggregates data from sandbox_jobs, parsing metrics
-    // and deduplicating by (agent, model, benchmark) keeping the latest job
+    // and deduplicating by (agent, model, benchmark) keeping the earliest valid job
     const { data, error } = await supabase
       .from('leaderboard_results')
       .select('*');

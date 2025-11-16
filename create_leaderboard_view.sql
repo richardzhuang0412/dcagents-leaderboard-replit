@@ -2,7 +2,7 @@
 -- Run this in Supabase SQL Editor: Project → SQL Editor → New Query
 
 -- This view aggregates evaluation results from sandbox_jobs
--- It deduplicates by (agent, model, benchmark) keeping the latest job
+-- It deduplicates by (agent, model, benchmark) keeping the earliest valid job
 -- Parses accuracy and accuracy_stderr from the metrics JSONB array
 
 CREATE OR REPLACE VIEW leaderboard_results AS
@@ -30,7 +30,7 @@ INNER JOIN models m ON sj.model_id = m.id
 INNER JOIN benchmarks b ON sj.benchmark_id = b.id
 WHERE sj.metrics IS NOT NULL
 ORDER BY a.name, m.name, b.name,
-         COALESCE(sj.ended_at, sj.created_at) DESC;
+         COALESCE(sj.ended_at, sj.created_at) ASC;
 
 -- Grant read access to the view
 -- Adjust the role name based on your Supabase setup
