@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { RefreshCw, Info } from 'lucide-react';
+import { RefreshCw, Info, ExternalLink, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -111,9 +111,31 @@ export default function Leaderboard() {
             onClearAll={handleClearFilters}
           />
 
-          <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 rounded-md text-sm text-muted-foreground">
-            <Info className="w-4 h-4 flex-shrink-0" />
-            <span>Standard error calculated over 3 runs</span>
+          <div className="space-y-3 px-3 py-3 bg-muted/30 rounded-md text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Info className="w-4 h-4 flex-shrink-0" />
+              <span>Standard error calculated over 3 runs</span>
+            </div>
+            <div className="flex items-center gap-4 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="inline-flex items-center justify-center w-5 h-5 rounded border-2 border-primary bg-primary/10">
+                  <ExternalLink className="w-3 h-3 text-primary" />
+                </div>
+                <span>Traces available</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="inline-flex items-center justify-center w-5 h-5 rounded border border-muted-foreground/20 bg-muted/50">
+                  <ExternalLink className="w-3 h-3 text-muted-foreground/40" />
+                </div>
+                <span>Traces unavailable</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="inline-flex items-center justify-center w-5 h-5 rounded border border-red-500/50 bg-red-500/10">
+                  <AlertCircle className="w-3 h-3 text-red-500" />
+                </div>
+                <span>Traces missing</span>
+              </div>
+            </div>
           </div>
 
           <LeaderboardTable

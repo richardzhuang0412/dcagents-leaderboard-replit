@@ -1,6 +1,17 @@
-import { useState, useMemo, useRef } from 'react';
-import { ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink } from 'lucide-react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+
+// Hide scrollbar while keeping scroll functionality
+const scrollbarHidingStyles = `
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+`;
 
 export interface BenchmarkResult {
   id: string;
@@ -43,6 +54,28 @@ export default function LeaderboardTable({
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const tableScrollContainerRef = useRef<HTMLDivElement>(null);
   const topScrollBarRef = useRef<HTMLDivElement>(null);
+
+  // Sync top scrollbar width with table content width
+  useEffect(() => {
+    const syncScrollWidth = () => {
+      if (tableScrollContainerRef.current && topScrollBarRef.current) {
+        const topInner = topScrollBarRef.current.children[0] as HTMLElement;
+        if (topInner) {
+          topInner.style.width = tableScrollContainerRef.current.scrollWidth + 'px';
+        }
+      }
+    };
+
+    // Use a small delay to ensure DOM is updated
+    const timer = setTimeout(syncScrollWidth, 100);
+
+    // Also sync when window resizes
+    window.addEventListener('resize', syncScrollWidth);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', syncScrollWidth);
+    };
+  }, [data.length]);
 
   // Get all unique benchmark names from the data
   const allBenchmarks = useMemo(() => {
@@ -156,6 +189,11 @@ export default function LeaderboardTable({
   const handleTableScroll = () => {
     if (tableScrollContainerRef.current && topScrollBarRef.current) {
       topScrollBarRef.current.scrollLeft = tableScrollContainerRef.current.scrollLeft;
+      // Ensure the top scrollbar's inner div has the same scroll width as the table
+      const topInner = topScrollBarRef.current.children[0] as HTMLElement;
+      if (topInner && tableScrollContainerRef.current.scrollWidth) {
+        topInner.style.width = tableScrollContainerRef.current.scrollWidth + 'px';
+      }
     }
   };
 
@@ -184,10 +222,13 @@ export default function LeaderboardTable({
     return 'text-foreground';
   };
 
-  const formatBenchmarkCell = (benchmarkData?: { accuracy: number; standardError: number; hfTracesLink?: string }) => {
+  const formatBenchmarkCell = (benchmarkData?: { accuracy: number; standardError: number; hfTracesLink?: string }, benchmarkName?: string) => {
     if (!benchmarkData) {
       return <span className="text-muted-foreground text-sm">—</span>;
     }
+
+    // Special handling for dev_set_71_tasks: show red warning flag for missing links
+    const isDevSet71Tasks = benchmarkName === 'dev_set_71_tasks';
 
     return (
       <div className="flex items-center gap-2 justify-end">
@@ -201,6 +242,13 @@ export default function LeaderboardTable({
           >
             <ExternalLink className="w-3.5 h-3.5 text-primary" />
           </a>
+        ) : isDevSet71Tasks ? (
+          <div
+            title="Traces link missing for dev_set_71_tasks"
+            className="inline-flex items-center justify-center w-5 h-5 rounded border border-red-500/50 bg-red-500/10 cursor-not-allowed"
+          >
+            <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+          </div>
         ) : (
           <div
             title="Traces link not available"
@@ -224,20 +272,31 @@ export default function LeaderboardTable({
   const totalColumns = 2 + visibleBenchmarks.length; // model + agent + benchmark columns
 
   return (
-    <div className="border border-border rounded-md overflow-hidden">
-      <div
-        ref={topScrollBarRef}
-        onScroll={handleTopScrollBarScroll}
-        className="overflow-x-auto overflow-y-hidden"
-        style={{ height: '8px' }}
-      >
-        <div style={{ width: '100%', height: '1px' }} />
-      </div>
-      <div className="overflow-x-auto" ref={tableScrollContainerRef} onScroll={handleTableScroll}>
+    <>
+      <style>{scrollbarHidingStyles}</style>
+      <div className="border border-border rounded-md overflow-hidden">
+        <div
+          ref={topScrollBarRef}
+          onScroll={handleTopScrollBarScroll}
+          style={{
+            height: '16px',
+            backgroundColor: 'hsl(var(--muted))',
+            borderBottom: '1px solid hsl(var(--border))',
+            overflowX: 'auto',
+            overflowY: 'hidden'
+          }}
+        >
+          <div style={{ height: '1px', minWidth: '100%' }} />
+        </div>
+        <div
+          className="overflow-x-auto"
+          ref={tableScrollContainerRef}
+          onScroll={handleTableScroll}
+        >
         <table className="w-full">
           <thead className="bg-muted/50 sticky top-0 z-10">
             <tr className="border-b border-border">
-              <th className="text-left px-6 py-4 min-w-[200px]">
+              <th className="text-left px-6 py-4 min-w-[200px] sticky left-0 z-20 bg-muted/50">
                 <button
                   onClick={() => handleSort('modelName')}
                   className="flex items-center gap-2 font-medium text-sm uppercase tracking-wide hover-elevate active-elevate-2 -mx-2 px-2 py-1 rounded-md"
@@ -287,7 +346,7 @@ export default function LeaderboardTable({
                   }`}
                   data-testid={`row-result-${row.modelName}-${row.agentName}`}
                 >
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 sticky left-0 z-20 bg-background">
                     <span className="font-semibold text-foreground">{row.modelName}</span>
                   </td>
                   <td className="px-6 py-4">
@@ -295,7 +354,7 @@ export default function LeaderboardTable({
                   </td>
                   {visibleBenchmarks.map(benchmark => (
                     <td key={benchmark} className="px-6 py-4 text-right">
-                      {formatBenchmarkCell(row.benchmarks[benchmark])}
+                      {formatBenchmarkCell(row.benchmarks[benchmark], benchmark)}
                     </td>
                   ))}
                 </tr>
@@ -303,7 +362,8 @@ export default function LeaderboardTable({
             )}
           </tbody>
         </table>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
