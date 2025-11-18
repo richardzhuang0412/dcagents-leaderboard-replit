@@ -9,6 +9,10 @@ Web-based leaderboard for displaying LLM agent benchmark evaluation results from
 - ↕️ **Sort** - Click column headers to sort by any field
 - 🎨 **Theme** - Dark/light mode toggle
 - 📊 **Live Data** - Direct connection to Supabase database
+- 📌 **Frozen Columns** - Model Name column stays visible when scrolling horizontally
+- 📜 **Dual Scrollbars** - Horizontal scrollbars at both top and bottom for easy navigation
+- ⚠️ **Visual Indicators** - Color-coded icons for trace link availability (blue = available, grey = unavailable, red = missing)
+- 📖 **Legend** - Built-in legend explaining icon meanings
 
 ## Prerequisites
 
@@ -49,6 +53,11 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 
 The leaderboard requires a database view to aggregate evaluation results.
 
+**Data Aggregation Strategy:**
+The view uses `DISTINCT ON (a.name, m.name, b.name)` to keep only one result per (agent, model, benchmark) combination. The `ORDER BY` clause determines which result is kept:
+- **Current (Ascending - `ASC`)**: Keeps the **earliest** valid evaluation
+- Results are sorted by timestamp (`COALESCE(sj.ended_at, sj.created_at) ASC`)
+
 **Run this SQL in Supabase SQL Editor:**
 
 ```sql
@@ -83,7 +92,7 @@ INNER JOIN models m ON sj.model_id = m.id
 INNER JOIN benchmarks b ON sj.benchmark_id = b.id
 WHERE sj.metrics IS NOT NULL
 ORDER BY a.name, m.name, b.name,
-         COALESCE(sj.ended_at, sj.created_at) DESC;
+         COALESCE(sj.ended_at, sj.created_at) ASC;
 
 -- Grant permissions
 GRANT SELECT ON leaderboard_results TO anon, authenticated;
@@ -241,10 +250,27 @@ leaderboard/
 - Edit `FilterControls.tsx` for filter UI
 - Edit `Leaderboard.tsx` for filter state management
 
+## Recent Updates (November 2025)
+
+### UI/UX Enhancements
+- ✨ **Frozen Model Column** - Model Name column stays visible when scrolling horizontally
+- 📜 **Dual Horizontal Scrollbars** - Synchronized scrollbars at top and bottom for easy navigation
+- ⚠️ **Visual Link Indicators** - Color-coded icons showing trace availability:
+  - 🔵 Blue: Traces available
+  - ⚪ Grey: Traces unavailable
+  - 🔴 Red: Traces missing (for `dev_set_71_tasks` benchmark)
+- 📖 **Icon Legend** - Visual guide explaining what each icon means
+- 🔧 **Improved Search Layout** - Fixed search bar that maintains alignment when typing
+
+### Data Changes
+- 📊 **Aggregation Strategy** - Changed from showing latest to earliest valid evaluation per (model, agent, benchmark)
+  - Allows tracking of initial model performance
+  - Consistent evaluation baseline for comparisons
+
 ## Documentation
 
 - **Setup Guide** - `SUPABASE_SETUP.md` - Detailed Supabase integration guide
-- **Progress Log** - `PROGRESS.md` - Development progress and troubleshooting
+- **Progress Log** - `PROGRESS.md` - Comprehensive development progress and changelog
 - **View SQL** - `create_leaderboard_view.sql` - Database view definition
 - **Project Context** - `CLAUDE.md` - Architecture and development guidelines
 

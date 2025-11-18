@@ -1,16 +1,88 @@
-# Leaderboard Supabase Integration - Progress Report
+# Leaderboard Development - Progress Report
 
-## Date: October 16, 2025
+## Date: November 17, 2025
 
 ## Summary
 
-Successfully migrated the leaderboard from direct PostgreSQL connection to Supabase JS client. The core functionality is complete, but there's a lingering npm dependency issue preventing the dev server from starting.
+Successfully completed major UI/UX enhancements and data aggregation improvements. The leaderboard now features a frozen model name column, dual horizontal scrollbars, enhanced visual indicators for missing data, and improved search bar layout. Data aggregation logic changed from latest to earliest valid evaluation.
 
 ---
 
 ## ✅ Completed Tasks
 
-### 1. Installed Supabase JS Client
+### Phase 1: Data Aggregation Changes (Nov 17, 2025)
+
+#### 1. Changed Eval Aggregation from Latest to Earliest
+- **File**: `create_leaderboard_view.sql`
+- **Change**: Modified `ORDER BY` clause from `DESC` to `ASC` on timestamp
+- **Impact**: Now shows the earliest valid evaluation per (model, agent, benchmark) instead of the latest
+- **Files Updated**:
+  - `create_leaderboard_view.sql` (lines 32-33)
+  - `server/storage.ts` (line 17) - Updated comment
+  - `CLAUDE.md` (lines 80, 210) - Updated documentation
+
+---
+
+### Phase 2: UI/UX Enhancements (Nov 17, 2025)
+
+#### 2. Frozen Model Name Column During Horizontal Scroll
+- **File**: `client/src/components/LeaderboardTable.tsx`
+- **Implementation**:
+  - Added `sticky left-0 z-20 bg-muted/50` to Model Name header
+  - Added `sticky left-0 z-20 bg-background` to Model Name body cells
+  - Model Name column stays fixed while benchmark columns scroll horizontally
+- **Result**: Users can always see which model they're looking at when scrolling right
+
+#### 3. Horizontal Scrollbar at Top and Bottom
+- **File**: `client/src/components/LeaderboardTable.tsx`
+- **Implementation**:
+  - Added visible scrollbar at top with background color and border
+  - Kept native scrollbar at bottom visible
+  - Implemented scroll synchronization between top and bottom scrollbars
+  - Added `useEffect` hook to sync scrollbar widths with table content width (100ms delay for DOM update)
+- **Features**:
+  - Top scrollbar has `height: 16px` for easy access
+  - Smooth transitions and proper sizing
+  - Both scrollbars move in sync bidirectionally
+
+#### 4. Red Warning Flag for Missing Links on dev_set_71_tasks
+- **File**: `client/src/components/LeaderboardTable.tsx`
+- **Implementation**:
+  - Imported `AlertCircle` icon from lucide-react
+  - Updated `formatBenchmarkCell` function to accept `benchmarkName` parameter
+  - Added special handling: if benchmark is `dev_set_71_tasks` and link is missing, show red alert circle
+  - Visual difference:
+    - **Blue icon**: Traces available (clickable link)
+    - **Grey icon**: Traces unavailable (for other benchmarks)
+    - **Red warning icon**: Traces missing (for dev_set_71_tasks only)
+
+#### 5. Legend for Icon Meanings
+- **File**: `client/src/pages/Leaderboard.tsx`
+- **Implementation**:
+  - Added visual legend below "Standard error calculated over 3 runs" text
+  - Shows all three icon states with descriptions:
+    - Blue: Traces available
+    - Grey: Traces unavailable
+    - Red: Traces missing
+  - Uses same styling/sizing as actual table icons for consistency
+  - Imported `ExternalLink` and `AlertCircle` icons
+
+#### 6. Fixed Search Bar Layout
+- **File**: `client/src/components/SearchBar.tsx`
+- **Problem**: Clear button was wrapping to next line when text was entered
+- **Solution**: Restructured layout using flexbox instead of absolute positioning
+  - Changed from conditional absolute positioning to flex containers
+  - Each search bar now uses: `flex items-center gap-2 min-w-0`
+  - Input wrapper: `relative min-w-0 flex-1` (grows to fill space)
+  - Clear button: `flex-shrink-0` (never shrinks)
+  - Result: Clear button stays inline with input field at all times
+- **Additional**: Updated benchmark search placeholder from "Filter benchmark columns..." to "Search benchmarks..." for consistency
+
+---
+
+### Phase 0: Initial Supabase Integration (Oct 16, 2025)
+
+#### 1. Installed Supabase JS Client
 - **Package**: `@supabase/supabase-js@2.75.0`
 - **Location**: Added to `package.json` dependencies
 - **Purpose**: Replace direct PostgreSQL connection with Supabase API
@@ -63,7 +135,40 @@ Successfully migrated the leaderboard from direct PostgreSQL connection to Supab
 
 ---
 
-## ⚠️ Current Problem: NPM Dependency Issue
+## 📂 Files Modified Summary
+
+### Frontend Components
+- ✅ `client/src/components/LeaderboardTable.tsx` - Sticky columns, dual scrollbars, red warning icons, icon formatting
+- ✅ `client/src/components/SearchBar.tsx` - Fixed flex layout, consistent placeholder text
+- ✅ `client/src/pages/Leaderboard.tsx` - Added legend for icon meanings
+
+### Database & Backend
+- ✅ `create_leaderboard_view.sql` - Changed aggregation from latest to earliest
+- ✅ `server/storage.ts` - Updated comments
+
+### Documentation
+- ✅ `CLAUDE.md` - Updated aggregation documentation
+- ✅ `PROGRESS.md` - This file (comprehensive progress tracking)
+
+---
+
+## 🎯 Known Limitations & Future Improvements
+
+### Current Limitations
+1. **Red warning flag only for dev_set_71_tasks** - Other benchmarks still show grey icon for missing links
+2. **Model Name column frozen only** - Agent Name column scrolls with benchmarks (by design)
+3. **No pagination** - All results loaded at once (works up to ~1000 rows)
+
+### Potential Future Enhancements
+1. Make red warning flag configurable for other benchmarks
+2. Add sorting/filtering by link availability status
+3. Add performance metrics (load time, number of requests)
+4. Export functionality (CSV, JSON)
+5. Customizable column freezing (not just model name)
+
+---
+
+## ⚠️ Previous Problem: NPM Dependency Issue (RESOLVED)
 
 ### Error Message
 ```
