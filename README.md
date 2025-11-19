@@ -4,15 +4,17 @@ Web-based leaderboard for displaying LLM agent benchmark evaluation results from
 
 ## Features
 
-- 🔍 **Search** - Real-time filtering by model, agent, or benchmark name
-- 🎯 **Filter** - Multi-select dropdowns for precise filtering
-- ↕️ **Sort** - Click column headers to sort by any field
+- 🔍 **Search** - Real-time filtering by model, agent, benchmark, or base model name
+- 🎯 **Filter** - Multi-select dropdowns for precise filtering (including base models)
+- ↕️ **Sort** - Click column headers to sort by any field; per-benchmark toggle between accuracy and improvement sort
 - 🎨 **Theme** - Dark/light mode toggle
 - 📊 **Live Data** - Direct connection to Supabase database
 - 📌 **Frozen Columns** - Model Name column stays visible when scrolling horizontally
 - 📜 **Dual Scrollbars** - Horizontal scrollbars at both top and bottom for easy navigation
 - ⚠️ **Visual Indicators** - Color-coded icons for trace link availability (blue = available, grey = unavailable, red = missing)
 - 📖 **Legend** - Built-in legend explaining icon meanings
+- 📈 **Improvement Metrics** - View model improvement relative to base models with per-benchmark comparison
+- 🔄 **View Toggle** - Switch between standard leaderboard and improvement-enhanced views
 
 ## Prerequisites
 
@@ -51,52 +53,46 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 
 ### 2. Database View Setup
 
-The leaderboard requires a database view to aggregate evaluation results.
+The leaderboard requires a database view to aggregate evaluation results. The view includes model IDs and base model information for improvement metrics.
 
 **Data Aggregation Strategy:**
 The view uses `DISTINCT ON (a.name, m.name, b.name)` to keep only one result per (agent, model, benchmark) combination. The `ORDER BY` clause determines which result is kept:
 - **Current (Ascending - `ASC`)**: Keeps the **earliest** valid evaluation
 - Results are sorted by timestamp (`COALESCE(sj.ended_at, sj.created_at) ASC`)
 
+**Base Model Information:**
+- The view includes a LEFT JOIN to the `models` table to get base model names
+- A sub-query fetches base model accuracy for the same (agent, benchmark) combination
+- Returns 'None' for models without a base model (NULL base_model_id)
+
 **Run this SQL in Supabase SQL Editor:**
 
 ```sql
 -- Open: Supabase Dashboard → SQL Editor → New Query
 -- Copy and paste the contents of create_leaderboard_view.sql
+-- The script includes DROP VIEW IF EXISTS to safely recreate the view
 ```
 
-Or manually create the view:
+Or use the provided `create_leaderboard_view.sql` file which includes:
+- Drop and recreate logic
+- Model and base model ID references
+- Base model accuracy for improvement calculations
+- All necessary permissions
 
-```sql
-CREATE OR REPLACE VIEW leaderboard_results AS
-SELECT DISTINCT ON (a.name, m.name, b.name)
-  gen_random_uuid()::text as id,
-  m.name as model_name,
-  a.name as agent_name,
-  b.name as benchmark_name,
-  (
-    SELECT (elem->>'value')::float * 100
-    FROM jsonb_array_elements(sj.metrics) elem
-    WHERE elem->>'name' = 'accuracy'
-    LIMIT 1
-  ) as accuracy,
-  (
-    SELECT (elem->>'value')::float * 100
-    FROM jsonb_array_elements(sj.metrics) elem
-    WHERE elem->>'name' = 'accuracy_stderr'
-    LIMIT 1
-  ) as standard_error
-FROM sandbox_jobs sj
-INNER JOIN agents a ON sj.agent_id = a.id
-INNER JOIN models m ON sj.model_id = m.id
-INNER JOIN benchmarks b ON sj.benchmark_id = b.id
-WHERE sj.metrics IS NOT NULL
-ORDER BY a.name, m.name, b.name,
-         COALESCE(sj.ended_at, sj.created_at) ASC;
-
--- Grant permissions
-GRANT SELECT ON leaderboard_results TO anon, authenticated;
-```
+The view structure includes:
+- `id` - Unique identifier
+- `model_id` - Model UUID
+- `model_name` - Model name
+- `base_model_id` - Base model UUID (NULL if no base model)
+- `base_model_name` - Base model name ('None' if no base model)
+- `agent_id` - Agent UUID
+- `agent_name` - Agent name
+- `benchmark_id` - Benchmark UUID
+- `benchmark_name` - Benchmark name
+- `accuracy` - Accuracy percentage (0-100)
+- `standard_error` - Standard error percentage
+- `base_model_accuracy` - Base model accuracy for improvement calculation (NULL if unavailable)
+- `hf_traces_link` - HuggingFace traces URL
 
 **Verify the view:**
 ```sql
@@ -187,6 +183,12 @@ See the parent directory's `README.md` for detailed upload instructions.
 - Run the view creation SQL in Supabase SQL Editor (see Configuration step 2)
 - Verify: `SELECT * FROM leaderboard_results LIMIT 1;`
 
+### "cannot change name of view column" when updating view
+- This error occurs when trying to modify an existing view's column structure
+- **Solution**: The `create_leaderboard_view.sql` already includes `DROP VIEW IF EXISTS leaderboard_results CASCADE;`
+- Simply run the entire script - it will safely drop and recreate the view
+- All dependent views/functions will also be dropped (CASCADE option)
+
 ### "No results found" in leaderboard
 - Check if you have evaluation data: `SELECT COUNT(*) FROM sandbox_jobs WHERE metrics IS NOT NULL;`
 - Verify jobs have `accuracy` in metrics: `SELECT metrics FROM sandbox_jobs WHERE metrics IS NOT NULL LIMIT 1;`
@@ -252,7 +254,22 @@ leaderboard/
 
 ## Recent Updates (November 2025)
 
-### UI/UX Enhancements
+### Model Improvement Metrics Feature (Nov 18)
+- 📈 **Improvement Display** - Shows accuracy improvement relative to base models
+  - Calculates as absolute difference in percentage points (pp)
+  - Color-coded: Green for positive, Red for negative improvement
+  - Shows baseline base model accuracy for context
+- 📊 **Base Model Column** - New column displays which model each entry was trained from
+- 🔄 **Flexible Viewing** - Toggle between standard leaderboard and improvement-enhanced view
+- 🎯 **Smart Sorting** - Per-benchmark sort toggle: sort by accuracy OR improvement
+  - Each benchmark column has independent sort mode
+  - Acc/Imp buttons below benchmark name to toggle
+- 🔍 **Extended Search** - Search and filter by base model name
+- ⚙️ **Dual API Endpoints**:
+  - `/api/leaderboard-pivoted` - Standard leaderboard (backward compatible)
+  - `/api/leaderboard-pivoted-with-improvement` - Enhanced with improvement metrics
+
+### UI/UX Enhancements (Nov 17)
 - ✨ **Frozen Model Column** - Model Name column stays visible when scrolling horizontally
 - 📜 **Dual Horizontal Scrollbars** - Synchronized scrollbars at top and bottom for easy navigation
 - ⚠️ **Visual Link Indicators** - Color-coded icons showing trace availability:

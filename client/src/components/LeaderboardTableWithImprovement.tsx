@@ -13,22 +13,9 @@ const scrollbarHidingStyles = `
   }
 `;
 
-export interface BenchmarkResult {
-  id: string;
+export interface PivotedLeaderboardRowWithImprovement {
   modelName: string;
   agentName: string;
-  benchmarkName: string;
-  accuracy: number;
-  standardError: number;
-}
-
-export interface PivotedLeaderboardRow {
-  modelName: string;
-  agentName: string;
-  benchmarks: Record<string, { accuracy: number; standardError: number; hfTracesLink?: string }>;
-}
-
-export interface PivotedLeaderboardRowWithImprovement extends PivotedLeaderboardRow {
   modelId: string;
   baseModelName: string;
   benchmarks: Record<string, {
@@ -40,30 +27,35 @@ export interface PivotedLeaderboardRowWithImprovement extends PivotedLeaderboard
   }>;
 }
 
-interface LeaderboardTableProps {
-  data: PivotedLeaderboardRow[];
+interface LeaderboardTableWithImprovementProps {
+  data: PivotedLeaderboardRowWithImprovement[];
   modelSearch: string;
   agentSearch: string;
+  baseModelSearch: string;
   benchmarkSearch: string;
   filters: {
     models: string[];
     agents: string[];
+    baseModels: string[];
     benchmarks: string[];
   };
 }
 
-type SortField = 'modelName' | 'agentName' | string; // string for dynamic benchmark names
+type SortField = 'modelName' | 'agentName' | 'baseModelName' | string; // string for dynamic benchmark names
 type SortDirection = 'asc' | 'desc' | null;
+type SortMode = 'accuracy' | 'improvement';
 
-export default function LeaderboardTable({
+export default function LeaderboardTableWithImprovement({
   data,
   modelSearch,
   agentSearch,
+  baseModelSearch,
   benchmarkSearch,
   filters
-}: LeaderboardTableProps) {
+}: LeaderboardTableWithImprovementProps) {
   const [sortField, setSortField] = useState<SortField>('modelName');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [sortModePerBenchmark, setSortModePerBenchmark] = useState<Record<string, SortMode>>({});
   const tableScrollContainerRef = useRef<HTMLDivElement>(null);
   const topScrollBarRef = useRef<HTMLDivElement>(null);
 
@@ -132,6 +124,12 @@ export default function LeaderboardTable({
       filtered = filtered.filter(row => row.agentName.toLowerCase().includes(query));
     }
 
+    // Filter by base model search
+    if (baseModelSearch) {
+      const query = baseModelSearch.toLowerCase();
+      filtered = filtered.filter(row => row.baseModelName.toLowerCase().includes(query));
+    }
+
     // Filter by model filters
     if (filters.models.length > 0) {
       filtered = filtered.filter(row => filters.models.includes(row.modelName));
@@ -140,6 +138,11 @@ export default function LeaderboardTable({
     // Filter by agent filters
     if (filters.agents.length > 0) {
       filtered = filtered.filter(row => filters.agents.includes(row.agentName));
+    }
+
+    // Filter by base model filters
+    if (filters.baseModels.length > 0) {
+      filtered = filtered.filter(row => filters.baseModels.includes(row.baseModelName));
     }
 
     // Sort the data
@@ -154,10 +157,21 @@ export default function LeaderboardTable({
         } else if (sortField === 'agentName') {
           aVal = a.agentName;
           bVal = b.agentName;
+        } else if (sortField === 'baseModelName') {
+          aVal = a.baseModelName;
+          bVal = b.baseModelName;
         } else {
           // Sorting by a benchmark column
-          aVal = a.benchmarks[sortField]?.accuracy;
-          bVal = b.benchmarks[sortField]?.accuracy;
+          const sortMode = sortModePerBenchmark[sortField] || 'accuracy';
+          if (sortMode === 'improvement') {
+            // Sort by improvement
+            aVal = a.benchmarks[sortField]?.improvement;
+            bVal = b.benchmarks[sortField]?.improvement;
+          } else {
+            // Sort by accuracy
+            aVal = a.benchmarks[sortField]?.accuracy;
+            bVal = b.benchmarks[sortField]?.accuracy;
+          }
         }
 
         // Handle undefined values (missing benchmark data)
@@ -180,7 +194,7 @@ export default function LeaderboardTable({
     }
 
     return filtered;
-  }, [data, modelSearch, agentSearch, filters, sortField, sortDirection]);
+  }, [data, modelSearch, agentSearch, baseModelSearch, filters, sortField, sortDirection, sortModePerBenchmark]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -196,6 +210,13 @@ export default function LeaderboardTable({
       setSortField(field);
       setSortDirection('asc');
     }
+  };
+
+  const toggleSortMode = (benchmark: string) => {
+    setSortModePerBenchmark(prev => ({
+      ...prev,
+      [benchmark]: prev[benchmark] === 'improvement' ? 'accuracy' : 'improvement'
+    }));
   };
 
   const handleTableScroll = () => {
@@ -234,7 +255,24 @@ export default function LeaderboardTable({
     return 'text-foreground';
   };
 
-  const formatBenchmarkCell = (benchmarkData?: { accuracy: number; standardError: number; hfTracesLink?: string }, benchmarkName?: string) => {
+  const getImprovementColor = (improvement: number | undefined) => {
+    if (improvement === undefined) return 'text-muted-foreground';
+    if (improvement >= 5) return 'text-green-600 dark:text-green-400';
+    if (improvement >= 0) return 'text-green-500 dark:text-green-300';
+    if (improvement >= -5) return 'text-orange-500 dark:text-orange-400';
+    return 'text-red-600 dark:text-red-400';
+  };
+
+  const formatBenchmarkCell = (
+    benchmarkData?: {
+      accuracy: number;
+      standardError: number;
+      hfTracesLink?: string;
+      baseModelAccuracy?: number;
+      improvement?: number;
+    },
+    benchmarkName?: string
+  ) => {
     if (!benchmarkData) {
       return <span className="text-muted-foreground text-sm">—</span>;
     }
@@ -269,19 +307,24 @@ export default function LeaderboardTable({
             <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/40" />
           </div>
         )}
-        <div className="flex flex-col items-end gap-0.5">
-          <span className={`font-mono font-semibold ${getAccuracyColor(benchmarkData.accuracy)}`}>
+        <div className="flex flex-col items-end gap-1">
+          <span className={`font-mono font-semibold text-sm ${getAccuracyColor(benchmarkData.accuracy)}`}>
             {benchmarkData.accuracy.toFixed(1)}%
           </span>
           <span className="font-mono text-xs text-muted-foreground">
             ±{benchmarkData.standardError.toFixed(2)}
           </span>
+          {benchmarkData.improvement !== undefined && (
+            <span className={`font-mono text-xs font-medium ${getImprovementColor(benchmarkData.improvement)}`}>
+              {benchmarkData.improvement >= 0 ? '+' : ''}{benchmarkData.improvement.toFixed(2)} pp
+            </span>
+          )}
         </div>
       </div>
     );
   };
 
-  const totalColumns = 2 + visibleBenchmarks.length; // model + agent + benchmark columns
+  const totalColumns = 3 + visibleBenchmarks.length; // model + agent + base model + benchmark columns
 
   return (
     <>
@@ -305,75 +348,114 @@ export default function LeaderboardTable({
           ref={tableScrollContainerRef}
           onScroll={handleTableScroll}
         >
-        <table className="w-full">
-          <thead className="bg-muted/50 sticky top-0 z-10">
-            <tr className="border-b border-border">
-              <th className="text-left px-6 py-4 min-w-[200px] sticky left-0 z-20 bg-muted/50">
-                <button
-                  onClick={() => handleSort('modelName')}
-                  className="flex items-center gap-2 font-medium text-sm uppercase tracking-wide hover-elevate active-elevate-2 -mx-2 px-2 py-1 rounded-md"
-                  data-testid="button-sort-model"
-                >
-                  Model Name
-                  <SortIcon field="modelName" />
-                </button>
-              </th>
-              <th className="text-left px-6 py-4 min-w-[200px]">
-                <button
-                  onClick={() => handleSort('agentName')}
-                  className="flex items-center gap-2 font-medium text-sm uppercase tracking-wide hover-elevate active-elevate-2 -mx-2 px-2 py-1 rounded-md"
-                  data-testid="button-sort-agent"
-                >
-                  Agent Name
-                  <SortIcon field="agentName" />
-                </button>
-              </th>
-              {visibleBenchmarks.map(benchmark => (
-                <th key={benchmark} className="text-right px-6 py-4 min-w-[150px]">
+          <table className="w-full">
+            <thead className="bg-muted/50 sticky top-0 z-10">
+              <tr className="border-b border-border">
+                <th className="text-left px-6 py-4 min-w-[200px] sticky left-0 z-20 bg-muted/50">
                   <button
-                    onClick={() => handleSort(benchmark)}
-                    className="flex items-center gap-2 font-medium text-sm uppercase tracking-wide ml-auto hover-elevate active-elevate-2 -mx-2 px-2 py-1 rounded-md"
-                    data-testid={`button-sort-${benchmark}`}
+                    onClick={() => handleSort('modelName')}
+                    className="flex items-center gap-2 font-medium text-sm uppercase tracking-wide hover-elevate active-elevate-2 -mx-2 px-2 py-1 rounded-md"
+                    data-testid="button-sort-model"
                   >
-                    {benchmark}
-                    <SortIcon field={benchmark} />
+                    Model Name
+                    <SortIcon field="modelName" />
                   </button>
                 </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filteredAndSortedData.length === 0 ? (
-              <tr>
-                <td colSpan={totalColumns} className="px-6 py-12 text-center text-muted-foreground">
-                  No results found
-                </td>
+                <th className="text-left px-6 py-4 min-w-[200px]">
+                  <button
+                    onClick={() => handleSort('agentName')}
+                    className="flex items-center gap-2 font-medium text-sm uppercase tracking-wide hover-elevate active-elevate-2 -mx-2 px-2 py-1 rounded-md"
+                    data-testid="button-sort-agent"
+                  >
+                    Agent Name
+                    <SortIcon field="agentName" />
+                  </button>
+                </th>
+                <th className="text-left px-6 py-4 min-w-[200px]">
+                  <button
+                    onClick={() => handleSort('baseModelName')}
+                    className="flex items-center gap-2 font-medium text-sm uppercase tracking-wide hover-elevate active-elevate-2 -mx-2 px-2 py-1 rounded-md"
+                    data-testid="button-sort-basemodel"
+                  >
+                    Base Model
+                    <SortIcon field="baseModelName" />
+                  </button>
+                </th>
+                {visibleBenchmarks.map(benchmark => (
+                  <th key={benchmark} className="text-right px-6 py-4 min-w-[220px]">
+                    <div className="flex flex-col items-end gap-2">
+                      <button
+                        onClick={() => handleSort(benchmark)}
+                        className="flex items-center gap-2 font-medium text-sm uppercase tracking-wide hover-elevate active-elevate-2 -mx-2 px-2 py-1 rounded-md"
+                        data-testid={`button-sort-${benchmark}`}
+                      >
+                        {benchmark}
+                        <SortIcon field={benchmark} />
+                      </button>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <button
+                          onClick={() => toggleSortMode(benchmark)}
+                          className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                            (sortModePerBenchmark[benchmark] || 'accuracy') === 'accuracy'
+                              ? 'bg-primary/20 text-primary'
+                              : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                          }`}
+                          title="Sort by accuracy"
+                        >
+                          Acc
+                        </button>
+                        <button
+                          onClick={() => toggleSortMode(benchmark)}
+                          className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                            (sortModePerBenchmark[benchmark] || 'accuracy') === 'improvement'
+                              ? 'bg-green-500/20 text-green-600 dark:text-green-400'
+                              : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                          }`}
+                          title="Sort by improvement"
+                        >
+                          Imp
+                        </button>
+                      </div>
+                    </div>
+                  </th>
+                ))}
               </tr>
-            ) : (
-              filteredAndSortedData.map((row, index) => (
-                <tr
-                  key={`${row.modelName}-${row.agentName}`}
-                  className={`border-b border-border hover-elevate ${
-                    index % 2 === 0 ? 'bg-background' : 'bg-muted/20'
-                  }`}
-                  data-testid={`row-result-${row.modelName}-${row.agentName}`}
-                >
-                  <td className="px-6 py-4 sticky left-0 z-20 bg-background">
-                    <span className="font-semibold text-foreground">{row.modelName}</span>
+            </thead>
+            <tbody>
+              {filteredAndSortedData.length === 0 ? (
+                <tr>
+                  <td colSpan={totalColumns} className="px-6 py-12 text-center text-muted-foreground">
+                    No results found
                   </td>
-                  <td className="px-6 py-4">
-                    <span className="text-muted-foreground">{row.agentName}</span>
-                  </td>
-                  {visibleBenchmarks.map(benchmark => (
-                    <td key={benchmark} className="px-6 py-4 text-right">
-                      {formatBenchmarkCell(row.benchmarks[benchmark], benchmark)}
-                    </td>
-                  ))}
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                filteredAndSortedData.map((row, index) => (
+                  <tr
+                    key={`${row.modelName}-${row.agentName}`}
+                    className={`border-b border-border hover-elevate ${
+                      index % 2 === 0 ? 'bg-background' : 'bg-muted/20'
+                    }`}
+                    data-testid={`row-result-${row.modelName}-${row.agentName}`}
+                  >
+                    <td className="px-6 py-4 sticky left-0 z-20 bg-background">
+                      <span className="font-semibold text-foreground">{row.modelName}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-muted-foreground">{row.agentName}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-muted-foreground">{row.baseModelName}</span>
+                    </td>
+                    {visibleBenchmarks.map(benchmark => (
+                      <td key={benchmark} className="px-6 py-4 text-right">
+                        {formatBenchmarkCell(row.benchmarks[benchmark], benchmark)}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </>

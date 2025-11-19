@@ -1,14 +1,90 @@
 # Leaderboard Development - Progress Report
 
-## Date: November 17, 2025
+## Date: November 18, 2025
 
 ## Summary
 
-Successfully completed major UI/UX enhancements and data aggregation improvements. The leaderboard now features a frozen model name column, dual horizontal scrollbars, enhanced visual indicators for missing data, and improved search bar layout. Data aggregation logic changed from latest to earliest valid evaluation.
+Successfully implemented model improvement metrics feature. The leaderboard now displays accuracy improvements relative to base models with full sorting and filtering support. Users can toggle between standard leaderboard view and improvement-enhanced view. New base model column shows which model each entry was trained from. Per-benchmark sort toggle allows users to sort by either accuracy or improvement percentage points.
 
 ---
 
 ## ✅ Completed Tasks
+
+### Phase 3: Model Improvement Metrics Feature (Nov 18, 2025)
+
+#### 1. Enhanced Database View with Base Model Information
+- **File**: `create_leaderboard_view.sql`
+- **Changes**:
+  - Added `DROP VIEW IF EXISTS leaderboard_results CASCADE;` to safely recreate view with new schema
+  - Added `model_id` and `base_model_id` to select list for model reference
+  - Added `base_model_name` using LEFT JOIN to base model
+  - Added sub-query to fetch base model's accuracy for same (agent, benchmark) combination
+  - Field `base_model_accuracy` calculates improvement basis (NULL if no base model evaluation)
+  - Returns 'None' for base_model_name when base_model_id is NULL
+- **Note**: VIEW must be dropped first to change column structure in Supabase PostgreSQL
+
+#### 2. Extended Storage Layer with Improvement Data
+- **File**: `server/storage.ts`
+- **Changes**:
+  - Added `BenchmarkResultWithImprovement` interface extending `BenchmarkResult`
+  - Includes: `modelId`, `baseModelId`, `baseModelName`, `baseModelAccuracy`, `agentId`, `benchmarkId`
+  - Added `getAllBenchmarkResultsWithImprovement()` method to storage interface
+  - Maintains backward compatibility with existing `getAllBenchmarkResults()` method
+
+#### 3. New API Endpoint for Improvement Metrics
+- **File**: `server/routes.ts`
+- **Endpoint**: `GET /api/leaderboard-pivoted-with-improvement`
+- **Functionality**:
+  - Fetches results using `getAllBenchmarkResultsWithImprovement()`
+  - Pivots data by (model, agent) combination
+  - Calculates improvement as absolute difference: `current_accuracy - base_model_accuracy` (percentage points)
+  - Returns pivoted structure with improvement data in each benchmark cell
+  - Improvement is undefined when base_model_accuracy is not available
+
+#### 4. New Improvement-Enhanced Table Component
+- **File**: `client/src/components/LeaderboardTableWithImprovement.tsx`
+- **Features**:
+  - Fixed columns: Model Name, Agent Name, Base Model
+  - Dynamic benchmark columns with improvement data
+  - Per-benchmark sort mode toggle (Acc/Imp buttons)
+  - Two-level header: benchmark name above, sort mode buttons below
+  - Enhanced cell display showing:
+    - Accuracy % ± standard error
+    - Improvement in percentage points (pp) with color coding:
+      - Green (≥5pp): strong improvement
+      - Light green (0-5pp): moderate improvement
+      - Orange (-5 to 0pp): minor regression
+      - Red (<-5pp): significant regression
+  - Sorting supports both accuracy and improvement per benchmark
+  - Synced horizontal scrollbars (top and bottom)
+
+#### 5. Base Model Search Component
+- **File**: `client/src/components/SearchBarWithBaseModel.tsx`
+- **Features**:
+  - 4-column grid layout (model, agent, base model, benchmark)
+  - Real-time search filtering for all fields
+  - Clear button for each search field
+  - Placeholder: "Search base models..."
+  - Same styling as existing SearchBar component
+
+#### 6. Base Model Filter Component
+- **File**: `client/src/components/FilterControlsWithBaseModel.tsx`
+- **Features**:
+  - Multi-select popup for base models (with checkbox interface)
+  - Shows filter count badges for each filter type
+  - Displays active filters as removable badges
+  - Clear All button to reset all filters
+  - Supports filtering by: Models, Agents, Base Models, Benchmarks
+
+#### 7. View Toggle in Main Leaderboard
+- **File**: `client/src/pages/Leaderboard.tsx`
+- **Changes**:
+  - Added checkbox to toggle between standard and improvement views
+  - Fetches from appropriate endpoint based on toggle state
+  - Conditionally renders appropriate search bars and filters
+  - Conditionally renders appropriate table component
+  - Extracts available base models from pivoted data
+  - Defaults to showing improvement metrics (toggle starts checked)
 
 ### Phase 1: Data Aggregation Changes (Nov 17, 2025)
 
@@ -138,16 +214,21 @@ Successfully completed major UI/UX enhancements and data aggregation improvement
 ## 📂 Files Modified Summary
 
 ### Frontend Components
-- ✅ `client/src/components/LeaderboardTable.tsx` - Sticky columns, dual scrollbars, red warning icons, icon formatting
-- ✅ `client/src/components/SearchBar.tsx` - Fixed flex layout, consistent placeholder text
-- ✅ `client/src/pages/Leaderboard.tsx` - Added legend for icon meanings
+- ✅ `client/src/components/LeaderboardTable.tsx` - Sticky columns, dual scrollbars, red warning icons (existing)
+- ✅ `client/src/components/LeaderboardTableWithImprovement.tsx` - NEW: Table with improvement metrics, per-benchmark sort toggle, base model column
+- ✅ `client/src/components/SearchBar.tsx` - Fixed flex layout (existing)
+- ✅ `client/src/components/SearchBarWithBaseModel.tsx` - NEW: 4-column search with base model search
+- ✅ `client/src/components/FilterControls.tsx` - Existing filter controls
+- ✅ `client/src/components/FilterControlsWithBaseModel.tsx` - NEW: Filter controls with base model dropdown
+- ✅ `client/src/pages/Leaderboard.tsx` - Added view toggle, conditional rendering, base model extraction
 
 ### Database & Backend
-- ✅ `create_leaderboard_view.sql` - Changed aggregation from latest to earliest
-- ✅ `server/storage.ts` - Updated comments
+- ✅ `create_leaderboard_view.sql` - Added base model IDs, names, and accuracy for improvement calculations
+- ✅ `server/storage.ts` - Added `BenchmarkResultWithImprovement` interface and `getAllBenchmarkResultsWithImprovement()` method
+- ✅ `server/routes.ts` - Added `/api/leaderboard-pivoted-with-improvement` endpoint
 
 ### Documentation
-- ✅ `CLAUDE.md` - Updated aggregation documentation
+- ✅ `CLAUDE.md` - Updated aggregation documentation (existing)
 - ✅ `PROGRESS.md` - This file (comprehensive progress tracking)
 
 ---
@@ -156,15 +237,21 @@ Successfully completed major UI/UX enhancements and data aggregation improvement
 
 ### Current Limitations
 1. **Red warning flag only for dev_set_71_tasks** - Other benchmarks still show grey icon for missing links
-2. **Model Name column frozen only** - Agent Name column scrolls with benchmarks (by design)
+2. **Model Name column frozen only** - Agent Name and Base Model columns scroll with benchmarks (by design)
 3. **No pagination** - All results loaded at once (works up to ~1000 rows)
+4. **Improvement data depends on base model evaluation** - If base model has no evaluation for a benchmark, improvement is not shown (marked as N/A)
+5. **Models without base models show 'None'** - Base model column displays 'None' string when base_model_id is NULL
 
 ### Potential Future Enhancements
 1. Make red warning flag configurable for other benchmarks
 2. Add sorting/filtering by link availability status
 3. Add performance metrics (load time, number of requests)
-4. Export functionality (CSV, JSON)
+4. Export functionality (CSV, JSON) with improvement data included
 5. Customizable column freezing (not just model name)
+6. Trend visualization: show improvement over time if multiple evaluations exist
+7. Comparison mode: select two models and show side-by-side improvement comparison
+8. Historical base model accuracy: show when base model was evaluated for context
+9. Bulk improvement analysis: show aggregate improvement statistics across all models
 
 ---
 
