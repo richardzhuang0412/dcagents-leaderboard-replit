@@ -16,6 +16,7 @@ const scrollbarHidingStyles = `
 export interface PivotedLeaderboardRowWithImprovement {
   modelName: string;
   agentName: string;
+  endedAt?: string;
   modelId: string;
   baseModelName: string;
   benchmarks: Record<string, {
@@ -41,7 +42,7 @@ interface LeaderboardTableWithImprovementProps {
   };
 }
 
-type SortField = 'modelName' | 'agentName' | 'baseModelName' | string; // string for dynamic benchmark names
+type SortField = 'modelName' | 'agentName' | 'baseModelName' | 'endedAt' | string; // string for dynamic benchmark names
 type SortDirection = 'asc' | 'desc' | null;
 type SortMode = 'accuracy' | 'improvement';
 
@@ -148,8 +149,8 @@ export default function LeaderboardTableWithImprovement({
     // Sort the data
     if (sortDirection && sortField) {
       filtered = [...filtered].sort((a, b) => {
-        let aVal: string | number | undefined;
-        let bVal: string | number | undefined;
+        let aVal: string | number | Date | undefined;
+        let bVal: string | number | Date | undefined;
 
         if (sortField === 'modelName') {
           aVal = a.modelName;
@@ -160,6 +161,9 @@ export default function LeaderboardTableWithImprovement({
         } else if (sortField === 'baseModelName') {
           aVal = a.baseModelName;
           bVal = b.baseModelName;
+        } else if (sortField === 'endedAt') {
+          aVal = a.endedAt ? new Date(a.endedAt) : undefined;
+          bVal = b.endedAt ? new Date(b.endedAt) : undefined;
         } else {
           // Sorting by a benchmark column
           const sortMode = sortModePerBenchmark[sortField] || 'accuracy';
@@ -174,7 +178,7 @@ export default function LeaderboardTableWithImprovement({
           }
         }
 
-        // Handle undefined values (missing benchmark data)
+        // Handle undefined values (missing benchmark data or timestamp)
         if (aVal === undefined && bVal === undefined) return 0;
         if (aVal === undefined) return 1;
         if (bVal === undefined) return -1;
@@ -187,6 +191,10 @@ export default function LeaderboardTableWithImprovement({
 
         if (typeof aVal === 'number' && typeof bVal === 'number') {
           return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+        }
+
+        if (aVal instanceof Date && bVal instanceof Date) {
+          return sortDirection === 'asc' ? aVal.getTime() - bVal.getTime() : bVal.getTime() - aVal.getTime();
         }
 
         return 0;
@@ -324,7 +332,7 @@ export default function LeaderboardTableWithImprovement({
     );
   };
 
-  const totalColumns = 3 + visibleBenchmarks.length; // model + agent + base model + benchmark columns
+  const totalColumns = 4 + visibleBenchmarks.length; // model + agent + base model + endedAt + benchmark columns
 
   return (
     <>
@@ -379,6 +387,16 @@ export default function LeaderboardTableWithImprovement({
                   >
                     Base Model
                     <SortIcon field="baseModelName" />
+                  </button>
+                </th>
+                <th className="text-left px-6 py-4 min-w-[180px]">
+                  <button
+                    onClick={() => handleSort('endedAt')}
+                    className="flex items-center gap-2 font-medium text-sm uppercase tracking-wide hover-elevate active-elevate-2 -mx-2 px-2 py-1 rounded-md"
+                    data-testid="button-sort-endedAt"
+                  >
+                    Ended At
+                    <SortIcon field="endedAt" />
                   </button>
                 </th>
                 {visibleBenchmarks.map(benchmark => (
@@ -445,6 +463,11 @@ export default function LeaderboardTableWithImprovement({
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-muted-foreground">{row.baseModelName}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-muted-foreground font-mono text-sm">
+                        {row.endedAt || '—'}
+                      </span>
                     </td>
                     {visibleBenchmarks.map(benchmark => (
                       <td key={benchmark} className="px-6 py-4 text-right">

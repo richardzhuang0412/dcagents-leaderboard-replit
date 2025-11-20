@@ -25,6 +25,7 @@ export interface BenchmarkResult {
 export interface PivotedLeaderboardRow {
   modelName: string;
   agentName: string;
+  endedAt?: string;
   benchmarks: Record<string, { accuracy: number; standardError: number; hfTracesLink?: string }>;
 }
 
@@ -52,7 +53,7 @@ interface LeaderboardTableProps {
   };
 }
 
-type SortField = 'modelName' | 'agentName' | string; // string for dynamic benchmark names
+type SortField = 'modelName' | 'agentName' | 'endedAt' | string; // string for dynamic benchmark names
 type SortDirection = 'asc' | 'desc' | null;
 
 export default function LeaderboardTable({
@@ -145,8 +146,8 @@ export default function LeaderboardTable({
     // Sort the data
     if (sortDirection && sortField) {
       filtered = [...filtered].sort((a, b) => {
-        let aVal: string | number | undefined;
-        let bVal: string | number | undefined;
+        let aVal: string | number | Date | undefined;
+        let bVal: string | number | Date | undefined;
 
         if (sortField === 'modelName') {
           aVal = a.modelName;
@@ -154,13 +155,16 @@ export default function LeaderboardTable({
         } else if (sortField === 'agentName') {
           aVal = a.agentName;
           bVal = b.agentName;
+        } else if (sortField === 'endedAt') {
+          aVal = a.endedAt ? new Date(a.endedAt) : undefined;
+          bVal = b.endedAt ? new Date(b.endedAt) : undefined;
         } else {
           // Sorting by a benchmark column
           aVal = a.benchmarks[sortField]?.accuracy;
           bVal = b.benchmarks[sortField]?.accuracy;
         }
 
-        // Handle undefined values (missing benchmark data)
+        // Handle undefined values (missing benchmark data or timestamp)
         if (aVal === undefined && bVal === undefined) return 0;
         if (aVal === undefined) return 1;
         if (bVal === undefined) return -1;
@@ -173,6 +177,10 @@ export default function LeaderboardTable({
 
         if (typeof aVal === 'number' && typeof bVal === 'number') {
           return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+        }
+
+        if (aVal instanceof Date && bVal instanceof Date) {
+          return sortDirection === 'asc' ? aVal.getTime() - bVal.getTime() : bVal.getTime() - aVal.getTime();
         }
 
         return 0;
@@ -281,7 +289,7 @@ export default function LeaderboardTable({
     );
   };
 
-  const totalColumns = 2 + visibleBenchmarks.length; // model + agent + benchmark columns
+  const totalColumns = 3 + visibleBenchmarks.length; // model + agent + endedAt + benchmark columns
 
   return (
     <>
@@ -328,6 +336,16 @@ export default function LeaderboardTable({
                   <SortIcon field="agentName" />
                 </button>
               </th>
+              <th className="text-left px-6 py-4 min-w-[180px]">
+                <button
+                  onClick={() => handleSort('endedAt')}
+                  className="flex items-center gap-2 font-medium text-sm uppercase tracking-wide hover-elevate active-elevate-2 -mx-2 px-2 py-1 rounded-md"
+                  data-testid="button-sort-endedAt"
+                >
+                  Ended At
+                  <SortIcon field="endedAt" />
+                </button>
+              </th>
               {visibleBenchmarks.map(benchmark => (
                 <th key={benchmark} className="text-right px-6 py-4 min-w-[150px]">
                   <button
@@ -363,6 +381,11 @@ export default function LeaderboardTable({
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-muted-foreground">{row.agentName}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-muted-foreground font-mono text-sm">
+                      {row.endedAt || '—'}
+                    </span>
                   </td>
                   {visibleBenchmarks.map(benchmark => (
                     <td key={benchmark} className="px-6 py-4 text-right">

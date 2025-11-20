@@ -33,6 +33,7 @@ SELECT DISTINCT ON (a.name, m.name, b.name)
     LIMIT 1
   ) as standard_error,
   sj.hf_traces_link as hf_traces_link,
+  COALESCE(sj.ended_at, sj.created_at) as ended_at,
   -- Get base model accuracy for the same (agent, benchmark) combination
   (
     SELECT (elem->>'value')::float * 100

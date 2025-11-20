@@ -3,17 +3,23 @@ import { supabase } from "@db";
 import { benchmarkResults } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
-export interface BenchmarkResultWithImprovement extends BenchmarkResult {
+export interface BenchmarkResultExtended extends BenchmarkResult {
+  hfTracesLink?: string;
+  endedAt?: string;
+}
+
+export interface BenchmarkResultWithImprovement extends BenchmarkResultExtended {
   modelId: string;
   baseModelId: string | null;
   baseModelName: string;
   baseModelAccuracy?: number;
   agentId: string;
   benchmarkId: string;
+  endedAt?: string;
 }
 
 export interface IStorage {
-  getAllBenchmarkResults(): Promise<BenchmarkResult[]>;
+  getAllBenchmarkResults(): Promise<BenchmarkResultExtended[]>;
   getAllBenchmarkResultsWithImprovement(): Promise<BenchmarkResultWithImprovement[]>;
   getBenchmarkResult(id: string): Promise<BenchmarkResult | undefined>;
   createBenchmarkResult(result: InsertBenchmarkResult): Promise<BenchmarkResult>;
@@ -21,7 +27,7 @@ export interface IStorage {
 }
 
 export class DbStorage implements IStorage {
-  async getAllBenchmarkResults(): Promise<BenchmarkResult[]> {
+  async getAllBenchmarkResults(): Promise<BenchmarkResultExtended[]> {
     // Query the leaderboard_results view
     // This view aggregates data from sandbox_jobs, parsing metrics
     // and deduplicating by (agent, model, benchmark) keeping the earliest valid job
@@ -46,6 +52,7 @@ export class DbStorage implements IStorage {
       accuracy: row.accuracy ?? 0,
       standardError: row.standard_error ?? 0,
       hfTracesLink: row.hf_traces_link,
+      endedAt: row.ended_at ? new Date(row.ended_at).toISOString().split('T')[0] + ' ' + new Date(row.ended_at).toTimeString().split(' ')[0] : undefined,
     }));
   }
 
@@ -73,6 +80,7 @@ export class DbStorage implements IStorage {
       accuracy: row.accuracy ?? 0,
       standardError: row.standard_error ?? 0,
       hfTracesLink: row.hf_traces_link,
+      endedAt: row.ended_at ? new Date(row.ended_at).toISOString().split('T')[0] + ' ' + new Date(row.ended_at).toTimeString().split(' ')[0] : undefined,
       modelId: row.model_id,
       baseModelId: row.base_model_id,
       baseModelName: row.base_model_name,

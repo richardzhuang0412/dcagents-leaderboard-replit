@@ -3,14 +3,10 @@ import { RefreshCw, Info, ExternalLink, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import SearchBar from '@/components/SearchBar';
-import FilterControls from '@/components/FilterControls';
-import LeaderboardTable, { type PivotedLeaderboardRow } from '@/components/LeaderboardTable';
 import LeaderboardTableWithImprovement, { type PivotedLeaderboardRowWithImprovement } from '@/components/LeaderboardTableWithImprovement';
 import SearchBarWithBaseModel from '@/components/SearchBarWithBaseModel';
 import FilterControlsWithBaseModel from '@/components/FilterControlsWithBaseModel';
 import ThemeToggle from '@/components/ThemeToggle';
-import { queryClient } from '@/lib/queryClient';
 
 export default function Leaderboard() {
   const [modelSearch, setModelSearch] = useState('');
@@ -21,11 +17,10 @@ export default function Leaderboard() {
   const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
   const [selectedBaseModels, setSelectedBaseModels] = useState<string[]>([]);
   const [selectedBenchmarks, setSelectedBenchmarks] = useState<string[]>([]);
-  const [showImprovement, setShowImprovement] = useState(true);
 
-  // Fetch improvement data if enabled, otherwise fetch basic data
-  const { data: pivotedData = [], isLoading, refetch } = useQuery<PivotedLeaderboardRowWithImprovement[] | PivotedLeaderboardRow[]>({
-    queryKey: [showImprovement ? '/api/leaderboard-pivoted-with-improvement' : '/api/leaderboard-pivoted'],
+  // Always fetch improvement metrics data
+  const { data: pivotedData = [], isLoading, refetch } = useQuery<PivotedLeaderboardRowWithImprovement[]>({
+    queryKey: ['/api/leaderboard-pivoted-with-improvement'],
   });
 
   const handleRefresh = () => {
@@ -41,13 +36,10 @@ export default function Leaderboard() {
   }, [pivotedData]);
 
   const availableBaseModels = useMemo(() => {
-    // Only available if showing improvement data
-    if (!showImprovement) return [];
     return Array.from(new Set(
-      (pivotedData as PivotedLeaderboardRowWithImprovement[])
-        .map((item) => (item as PivotedLeaderboardRowWithImprovement).baseModelName)
+      pivotedData.map((item) => item.baseModelName)
     )).sort();
-  }, [pivotedData, showImprovement]);
+  }, [pivotedData]);
 
   const availableBenchmarks = useMemo(() => {
     const benchmarkSet = new Set<string>();
@@ -106,73 +98,34 @@ export default function Leaderboard() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-6">
-          {/* View Toggle */}
-          <div className="flex items-center gap-2">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showImprovement}
-                onChange={(e) => setShowImprovement(e.target.checked)}
-                className="w-4 h-4"
-              />
-              <span className="text-sm font-medium">Show improvement metrics</span>
-            </label>
-          </div>
-
           {/* Search Bars */}
-          {showImprovement ? (
-            <SearchBarWithBaseModel
-              modelSearch={modelSearch}
-              agentSearch={agentSearch}
-              baseModelSearch={baseModelSearch}
-              benchmarkSearch={benchmarkSearch}
-              onModelSearchChange={setModelSearch}
-              onAgentSearchChange={setAgentSearch}
-              onBaseModelSearchChange={setBaseModelSearch}
-              onBenchmarkSearchChange={setBenchmarkSearch}
-            />
-          ) : (
-            <SearchBar
-              modelSearch={modelSearch}
-              agentSearch={agentSearch}
-              benchmarkSearch={benchmarkSearch}
-              onModelSearchChange={setModelSearch}
-              onAgentSearchChange={setAgentSearch}
-              onBenchmarkSearchChange={setBenchmarkSearch}
-            />
-          )}
+          <SearchBarWithBaseModel
+            modelSearch={modelSearch}
+            agentSearch={agentSearch}
+            baseModelSearch={baseModelSearch}
+            benchmarkSearch={benchmarkSearch}
+            onModelSearchChange={setModelSearch}
+            onAgentSearchChange={setAgentSearch}
+            onBaseModelSearchChange={setBaseModelSearch}
+            onBenchmarkSearchChange={setBenchmarkSearch}
+          />
 
           {/* Filters */}
-          {showImprovement ? (
-            <FilterControlsWithBaseModel
-              availableModels={availableModels}
-              availableAgents={availableAgents}
-              availableBaseModels={availableBaseModels}
-              availableBenchmarks={availableBenchmarks}
-              selectedModels={selectedModels}
-              selectedAgents={selectedAgents}
-              selectedBaseModels={selectedBaseModels}
-              selectedBenchmarks={selectedBenchmarks}
-              onModelsChange={setSelectedModels}
-              onAgentsChange={setSelectedAgents}
-              onBaseModelsChange={setSelectedBaseModels}
-              onBenchmarksChange={setSelectedBenchmarks}
-              onClearAll={handleClearFilters}
-            />
-          ) : (
-            <FilterControls
-              availableModels={availableModels}
-              availableAgents={availableAgents}
-              availableBenchmarks={availableBenchmarks}
-              selectedModels={selectedModels}
-              selectedAgents={selectedAgents}
-              selectedBenchmarks={selectedBenchmarks}
-              onModelsChange={setSelectedModels}
-              onAgentsChange={setSelectedAgents}
-              onBenchmarksChange={setSelectedBenchmarks}
-              onClearAll={handleClearFilters}
-            />
-          )}
+          <FilterControlsWithBaseModel
+            availableModels={availableModels}
+            availableAgents={availableAgents}
+            availableBaseModels={availableBaseModels}
+            availableBenchmarks={availableBenchmarks}
+            selectedModels={selectedModels}
+            selectedAgents={selectedAgents}
+            selectedBaseModels={selectedBaseModels}
+            selectedBenchmarks={selectedBenchmarks}
+            onModelsChange={setSelectedModels}
+            onAgentsChange={setSelectedAgents}
+            onBaseModelsChange={setSelectedBaseModels}
+            onBenchmarksChange={setSelectedBenchmarks}
+            onClearAll={handleClearFilters}
+          />
 
           <div className="space-y-3 px-3 py-3 bg-muted/30 rounded-md text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
@@ -202,33 +155,19 @@ export default function Leaderboard() {
           </div>
 
           {/* Table */}
-          {showImprovement ? (
-            <LeaderboardTableWithImprovement
-              data={pivotedData as PivotedLeaderboardRowWithImprovement[]}
-              modelSearch={modelSearch}
-              agentSearch={agentSearch}
-              baseModelSearch={baseModelSearch}
-              benchmarkSearch={benchmarkSearch}
-              filters={{
-                models: selectedModels,
-                agents: selectedAgents,
-                baseModels: selectedBaseModels,
-                benchmarks: selectedBenchmarks,
-              }}
-            />
-          ) : (
-            <LeaderboardTable
-              data={pivotedData as PivotedLeaderboardRow[]}
-              modelSearch={modelSearch}
-              agentSearch={agentSearch}
-              benchmarkSearch={benchmarkSearch}
-              filters={{
-                models: selectedModels,
-                agents: selectedAgents,
-                benchmarks: selectedBenchmarks,
-              }}
-            />
-          )}
+          <LeaderboardTableWithImprovement
+            data={pivotedData}
+            modelSearch={modelSearch}
+            agentSearch={agentSearch}
+            baseModelSearch={baseModelSearch}
+            benchmarkSearch={benchmarkSearch}
+            filters={{
+              models: selectedModels,
+              agents: selectedAgents,
+              baseModels: selectedBaseModels,
+              benchmarks: selectedBenchmarks,
+            }}
+          />
         </div>
       </main>
     </div>
