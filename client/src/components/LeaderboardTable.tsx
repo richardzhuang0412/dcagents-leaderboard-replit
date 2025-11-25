@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { BENCHMARKS_TO_EXCLUDE } from '@/config/benchmarkConfig';
 
 // Hide scrollbar while keeping scroll functionality
 const scrollbarHidingStyles = `
@@ -90,13 +91,16 @@ export default function LeaderboardTable({
     };
   }, [data.length]);
 
-  // Get all unique benchmark names from the data
+  // Get all unique benchmark names from the data, excluding configured benchmarks
   const allBenchmarks = useMemo(() => {
     const benchmarkSet = new Set<string>();
     data.forEach(row => {
       Object.keys(row.benchmarks).forEach(benchmark => benchmarkSet.add(benchmark));
     });
-    return Array.from(benchmarkSet).sort();
+    // Filter out excluded benchmarks
+    return Array.from(benchmarkSet)
+      .filter(benchmark => !BENCHMARKS_TO_EXCLUDE.includes(benchmark))
+      .sort();
   }, [data]);
 
   // Filter which benchmark columns to show based on search and filters

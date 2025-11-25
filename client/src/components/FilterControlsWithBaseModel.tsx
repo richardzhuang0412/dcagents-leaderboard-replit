@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { BENCHMARKS_TO_EXCLUDE } from '@/config/benchmarkConfig';
 
 interface FilterControlsWithBaseModelProps {
   availableModels: string[];
@@ -204,22 +205,35 @@ export default function FilterControlsWithBaseModel({
             <div className="space-y-3">
               <h4 className="font-medium text-sm">Show Benchmark Columns</h4>
               <div className="space-y-2 max-h-64 overflow-y-auto">
-                {availableBenchmarks.map((benchmark) => (
-                  <div key={benchmark} className="flex items-center gap-2">
-                    <Checkbox
-                      id={`benchmark-${benchmark}`}
-                      checked={selectedBenchmarks.includes(benchmark)}
-                      onCheckedChange={() => toggleBenchmark(benchmark)}
-                      data-testid={`checkbox-benchmark-${benchmark}`}
-                    />
-                    <Label
-                      htmlFor={`benchmark-${benchmark}`}
-                      className="text-sm cursor-pointer flex-1"
-                    >
-                      {benchmark}
-                    </Label>
-                  </div>
-                ))}
+                {availableBenchmarks.map((benchmark) => {
+                  const isExcluded = BENCHMARKS_TO_EXCLUDE.includes(benchmark);
+                  return (
+                    <div key={benchmark} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`benchmark-${benchmark}`}
+                        checked={selectedBenchmarks.includes(benchmark)}
+                        onCheckedChange={() => toggleBenchmark(benchmark)}
+                        data-testid={`checkbox-benchmark-${benchmark}`}
+                        disabled={isExcluded}
+                      />
+                      <Label
+                        htmlFor={`benchmark-${benchmark}`}
+                        className={`text-sm cursor-pointer flex-1 ${
+                          isExcluded
+                            ? 'line-through text-muted-foreground/50'
+                            : ''
+                        }`}
+                      >
+                        {benchmark}
+                        {isExcluded && (
+                          <span className="text-xs text-muted-foreground/60 ml-1">
+                            (excluded)
+                          </span>
+                        )}
+                      </Label>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </PopoverContent>

@@ -7,14 +7,15 @@ Web-based leaderboard for displaying LLM agent benchmark evaluation results from
 - 🔍 **Search** - Real-time filtering by model, agent, benchmark, or base model name
 - 🎯 **Filter** - Multi-select dropdowns for precise filtering (including base models)
 - ↕️ **Sort** - Click column headers to sort by any field; per-benchmark toggle between accuracy and improvement sort
+- 🕐 **Job Timestamps** - View and sort by job end times in ISO format (YYYY-MM-DD HH:MM:SS)
 - 🎨 **Theme** - Dark/light mode toggle
 - 📊 **Live Data** - Direct connection to Supabase database
 - 📌 **Frozen Columns** - Model Name column stays visible when scrolling horizontally
 - 📜 **Dual Scrollbars** - Horizontal scrollbars at both top and bottom for easy navigation
 - ⚠️ **Visual Indicators** - Color-coded icons for trace link availability (blue = available, grey = unavailable, red = missing)
-- 📖 **Legend** - Built-in legend explaining icon meanings
-- 📈 **Improvement Metrics** - View model improvement relative to base models with per-benchmark comparison
-- 🔄 **View Toggle** - Switch between standard leaderboard and improvement-enhanced views
+- 📖 **Comprehensive Legend** - Built-in legend explaining metrics, sorting modes, traces, and excluded benchmarks
+- 📈 **Improvement Metrics** - Always shows model improvement relative to base models with per-benchmark comparison
+- 🚫 **Benchmark Exclusion** - Problematic benchmarks are hidden from leaderboard with visual indicators in filters
 
 ## Prerequisites
 
@@ -91,8 +92,9 @@ The view structure includes:
 - `benchmark_name` - Benchmark name
 - `accuracy` - Accuracy percentage (0-100)
 - `standard_error` - Standard error percentage
-- `base_model_accuracy` - Base model accuracy for improvement calculation (NULL if unavailable)
 - `hf_traces_link` - HuggingFace traces URL
+- `ended_at` - Job end timestamp (or created_at if null) - sortable in ISO format
+- `base_model_accuracy` - Base model accuracy for improvement calculation (NULL if unavailable)
 
 **Verify the view:**
 ```sql
@@ -254,20 +256,37 @@ leaderboard/
 
 ## Recent Updates (November 2025)
 
+### Timestamp & Legend Enhancements (Nov 25)
+- 🕐 **Job End Time Column** - Added `ended_at` field with global sorting capability
+  - Displays in ISO format: `YYYY-MM-DD HH:MM:SS`
+  - Falls back to `created_at` if `ended_at` is null
+  - Sortable like other fixed columns
+- 📚 **Enhanced Documentation Legend** - Comprehensive legend sections:
+  - Standard Error (±) explanation
+  - Improvement (pp) metrics explanation with color coding guide
+  - Column Sorting modes (Acc vs Imp) explanation
+  - Trace Links visual indicators
+  - Excluded Benchmarks list (dynamic)
+- 🚫 **Benchmark Exclusion System** - Hide problematic benchmarks:
+  - Centralized config in `client/src/config/benchmarkConfig.ts`
+  - Currently excludes: `clean-sandboxes-tasks-eval-set`
+  - Visual indicators in filter dropdown (strikethrough, disabled, labeled)
+  - Easy to extend with more benchmarks
+- 🎯 **Unified Leaderboard View** - Removed view toggle:
+  - Always shows improvement metrics
+  - Single endpoint: `/api/leaderboard-pivoted-with-improvement`
+  - Consistent user experience
+
 ### Model Improvement Metrics Feature (Nov 18)
 - 📈 **Improvement Display** - Shows accuracy improvement relative to base models
   - Calculates as absolute difference in percentage points (pp)
   - Color-coded: Green for positive, Red for negative improvement
   - Shows baseline base model accuracy for context
 - 📊 **Base Model Column** - New column displays which model each entry was trained from
-- 🔄 **Flexible Viewing** - Toggle between standard leaderboard and improvement-enhanced view
 - 🎯 **Smart Sorting** - Per-benchmark sort toggle: sort by accuracy OR improvement
   - Each benchmark column has independent sort mode
   - Acc/Imp buttons below benchmark name to toggle
 - 🔍 **Extended Search** - Search and filter by base model name
-- ⚙️ **Dual API Endpoints**:
-  - `/api/leaderboard-pivoted` - Standard leaderboard (backward compatible)
-  - `/api/leaderboard-pivoted-with-improvement` - Enhanced with improvement metrics
 
 ### UI/UX Enhancements (Nov 17)
 - ✨ **Frozen Model Column** - Model Name column stays visible when scrolling horizontally
@@ -276,7 +295,6 @@ leaderboard/
   - 🔵 Blue: Traces available
   - ⚪ Grey: Traces unavailable
   - 🔴 Red: Traces missing (for `dev_set_71_tasks` benchmark)
-- 📖 **Icon Legend** - Visual guide explaining what each icon means
 - 🔧 **Improved Search Layout** - Fixed search bar that maintains alignment when typing
 
 ### Data Changes

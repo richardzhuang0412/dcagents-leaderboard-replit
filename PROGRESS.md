@@ -1,14 +1,76 @@
 # Leaderboard Development - Progress Report
 
-## Date: November 18, 2025
+## Latest Update: November 25, 2025
 
-## Summary
+## Summary (Current Session)
 
-Successfully implemented model improvement metrics feature. The leaderboard now displays accuracy improvements relative to base models with full sorting and filtering support. Users can toggle between standard leaderboard view and improvement-enhanced view. New base model column shows which model each entry was trained from. Per-benchmark sort toggle allows users to sort by either accuracy or improvement percentage points.
+Major UI improvements and feature refinements: Added `ended_at` timestamp display with sorting capability, unified the leaderboard to always show improvement metrics (removed toggle), added comprehensive legend documentation explaining metrics/sorting/traces, excluded problematic benchmarks from display, and provided visual feedback for excluded benchmarks in filter dropdowns.
 
 ---
 
 ## ✅ Completed Tasks
+
+### Phase 4: Job Timestamp, Legend Documentation & Benchmark Exclusion (Nov 25, 2025)
+
+#### 1. Added ended_at Timestamp Field to Leaderboard
+- **Files Modified**: `create_leaderboard_view.sql`, `server/storage.ts`, `server/routes.ts`, `client/src/components/LeaderboardTable.tsx`, `client/src/components/LeaderboardTableWithImprovement.tsx`
+- **Database View**: Added `COALESCE(sj.ended_at, sj.created_at) as ended_at` to view
+- **Backend**:
+  - Created `BenchmarkResultExtended` interface with `endedAt` field
+  - Updated both `/api/leaderboard-pivoted` and `/api/leaderboard-pivoted-with-improvement` endpoints to include `endedAt`
+  - Formatted timestamps to ISO format: `YYYY-MM-DD HH:MM:SS`
+- **Frontend**:
+  - Added "Ended At" column to both table components
+  - Positioned after Model Name and Agent Name (or after Base Model in improvement view)
+  - Implemented global sorting by timestamp
+  - Column displays "—" for missing timestamps
+
+#### 2. Unified Leaderboard to Always Show Improvement Metrics
+- **File**: `client/src/pages/Leaderboard.tsx`
+- **Changes**:
+  - Removed `showImprovement` state variable
+  - Removed checkbox toggle for switching views
+  - Always fetches from `/api/leaderboard-pivoted-with-improvement` endpoint
+  - Always renders `SearchBarWithBaseModel` and `FilterControlsWithBaseModel`
+  - Always renders `LeaderboardTableWithImprovement` component
+  - Removed unused imports for basic `SearchBar`, `FilterControls`, and `LeaderboardTable`
+- **Result**: Single unified leaderboard experience with full improvement metrics
+
+#### 3. Enhanced Legend with Comprehensive Documentation
+- **File**: `client/src/pages/Leaderboard.tsx`
+- **Added Sections**:
+  - **Standard Error (±)**: "Calculated over 3 runs. Shows variability in model performance."
+  - **Improvement (pp)**: "Percentage points gained over base model (e.g., +1.02 pp = 1.02% improvement). Green text indicates positive improvement, red indicates regression."
+  - **Column Sorting**: "For each benchmark, click 'Acc' to sort by accuracy or 'Imp' to sort by improvement over base model. Gray buttons indicate that sorting mode is inactive."
+  - **Trace Links**: Reorganized visual legend for trace link states (Available, Unavailable, Missing)
+  - **Excluded Benchmarks**: New section showing which benchmarks are hidden from the leaderboard (only appears if list is not empty)
+- **Visual Design**: Icons, proper spacing, hierarchical structure with bold titles and smaller descriptions
+
+#### 4. Created Benchmark Exclusion Configuration System
+- **File**: `client/src/config/benchmarkConfig.ts` (NEW)
+- **Content**: `BENCHMARKS_TO_EXCLUDE` constant array with `'clean-sandboxes-tasks-eval-set'`
+- **Purpose**: Centralized configuration for benchmarks to hide from leaderboard display
+- **Features**: Easy to maintain, can add more benchmarks without code changes to components
+
+#### 5. Filtered Excluded Benchmarks from Display
+- **Files Modified**: `client/src/components/LeaderboardTable.tsx`, `client/src/components/LeaderboardTableWithImprovement.tsx`
+- **Changes**:
+  - Imported `BENCHMARKS_TO_EXCLUDE` from config
+  - Updated `allBenchmarks` calculation to filter out excluded benchmarks
+  - Excluded benchmarks no longer appear as columns in the table
+- **Result**: Clean table without problematic benchmarks
+
+#### 6. Added Visual Indicators for Excluded Benchmarks in Filter
+- **File**: `client/src/components/FilterControlsWithBaseModel.tsx`
+- **Changes**:
+  - Imported `BENCHMARKS_TO_EXCLUDE`
+  - Updated benchmark filter dropdown to detect excluded benchmarks
+  - For excluded benchmarks:
+    - Checkbox is disabled (`disabled={isExcluded}`)
+    - Text is struck through (`line-through`)
+    - Text color is muted (`text-muted-foreground/50`)
+    - Added "(excluded)" label in smaller text
+- **Result**: Users can see that benchmarks exist but are intentionally hidden, and cannot select them
 
 ### Phase 3: Model Improvement Metrics Feature (Nov 18, 2025)
 

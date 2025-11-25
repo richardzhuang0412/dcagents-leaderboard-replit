@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { RefreshCw, Info, ExternalLink, AlertCircle } from 'lucide-react';
+import { RefreshCw, Info, ExternalLink, AlertCircle, Eye } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,7 @@ import LeaderboardTableWithImprovement, { type PivotedLeaderboardRowWithImprovem
 import SearchBarWithBaseModel from '@/components/SearchBarWithBaseModel';
 import FilterControlsWithBaseModel from '@/components/FilterControlsWithBaseModel';
 import ThemeToggle from '@/components/ThemeToggle';
+import { BENCHMARKS_TO_EXCLUDE } from '@/config/benchmarkConfig';
 
 export default function Leaderboard() {
   const [modelSearch, setModelSearch] = useState('');
@@ -127,31 +128,76 @@ export default function Leaderboard() {
             onClearAll={handleClearFilters}
           />
 
-          <div className="space-y-3 px-3 py-3 bg-muted/30 rounded-md text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <Info className="w-4 h-4 flex-shrink-0" />
-              <span>Standard error calculated over 3 runs</span>
-            </div>
-            <div className="flex items-center gap-4 text-xs">
-              <div className="flex items-center gap-2">
-                <div className="inline-flex items-center justify-center w-5 h-5 rounded border-2 border-primary bg-primary/10">
-                  <ExternalLink className="w-3 h-3 text-primary" />
+          <div className="space-y-4 px-3 py-3 bg-muted/30 rounded-md text-sm text-muted-foreground">
+            {/* Metrics Explanation */}
+            <div className="space-y-2">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-foreground">Standard Error (±)</p>
+                  <p className="text-xs">Calculated over 3 runs. Shows variability in model performance.</p>
                 </div>
-                <span>Traces available</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="inline-flex items-center justify-center w-5 h-5 rounded border border-muted-foreground/20 bg-muted/50">
-                  <ExternalLink className="w-3 h-3 text-muted-foreground/40" />
+              <div className="flex items-start gap-2 ml-6">
+                <div className="w-4 h-4" />
+                <div>
+                  <p className="font-medium text-foreground">Improvement (pp)</p>
+                  <p className="text-xs">Percentage points gained over base model (e.g., +1.02 pp = 1.02% improvement). Green text indicates positive improvement, red indicates regression.</p>
                 </div>
-                <span>Traces unavailable</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="inline-flex items-center justify-center w-5 h-5 rounded border border-red-500/50 bg-red-500/10">
-                  <AlertCircle className="w-3 h-3 text-red-500" />
-                </div>
-                <span>Traces missing</span>
               </div>
             </div>
+
+            {/* Sorting Explanation */}
+            <div className="space-y-2">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-foreground">Column Sorting</p>
+                  <p className="text-xs">For each benchmark, click "Acc" to sort by accuracy or "Imp" to sort by improvement over base model. Gray buttons indicate that sorting mode is inactive.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Traces Legend */}
+            <div className="space-y-2">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <p className="font-medium text-foreground">Trace Links</p>
+              </div>
+              <div className="flex items-center gap-4 text-xs ml-6">
+                <div className="flex items-center gap-2">
+                  <div className="inline-flex items-center justify-center w-5 h-5 rounded border-2 border-primary bg-primary/10">
+                    <ExternalLink className="w-3 h-3 text-primary" />
+                  </div>
+                  <span>Available</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="inline-flex items-center justify-center w-5 h-5 rounded border border-muted-foreground/20 bg-muted/50">
+                    <ExternalLink className="w-3 h-3 text-muted-foreground/40" />
+                  </div>
+                  <span>Unavailable</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="inline-flex items-center justify-center w-5 h-5 rounded border border-red-500/50 bg-red-500/10">
+                    <AlertCircle className="w-3 h-3 text-red-500" />
+                  </div>
+                  <span>Missing</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Excluded Benchmarks */}
+            {BENCHMARKS_TO_EXCLUDE.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <Eye className="w-4 h-4 flex-shrink-0 mt-0.5 opacity-50" />
+                  <div>
+                    <p className="font-medium text-foreground">Excluded Benchmarks</p>
+                    <p className="text-xs">The following benchmarks are hidden from the leaderboard: <span className="font-mono">{BENCHMARKS_TO_EXCLUDE.join(', ')}</span></p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Table */}
