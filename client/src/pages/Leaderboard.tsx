@@ -66,9 +66,9 @@ export default function Leaderboard() {
       row.benchmarks['dev_set_71_tasks'] !== undefined
     );
 
-    // Filter: only rows with valid endedAt timestamp
+    // Filter: only rows with valid latestEvalEndedAt timestamp
     const dataWithTimestamp = pivotedData.filter(row =>
-      row.endedAt && row.endedAt !== '—'
+      row.latestEvalEndedAt && row.latestEvalEndedAt !== '—'
     );
 
     // Top N by dev_set_71_tasks accuracy (descending)
@@ -80,11 +80,11 @@ export default function Leaderboard() {
       })
       .slice(0, topN === Number.MAX_SAFE_INTEGER ? undefined : topN);
 
-    // Recent N by endedAt timestamp (descending)
+    // Recent N by latestEvalEndedAt timestamp (descending)
     const mostRecent = [...dataWithTimestamp]
       .sort((a, b) => {
-        const dateA = new Date(a.endedAt!).getTime();
-        const dateB = new Date(b.endedAt!).getTime();
+        const dateA = new Date(a.latestEvalEndedAt!).getTime();
+        const dateB = new Date(b.latestEvalEndedAt!).getTime();
         return dateB - dateA;
       })
       .slice(0, recentN === Number.MAX_SAFE_INTEGER ? undefined : recentN);
@@ -278,6 +278,18 @@ export default function Leaderboard() {
               </div>
             </div>
 
+            {/* Timestamp Columns Legend */}
+            <div className="space-y-2">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-foreground">Timestamp Columns</p>
+                  <p className="text-xs"><strong>First Eval Ended At:</strong> The earliest evaluation completion time across all benchmarks for this model+agent combination.</p>
+                  <p className="text-xs mt-1"><strong>Latest Eval Ended At:</strong> The most recent evaluation completion time across all benchmarks for this model+agent combination.</p>
+                </div>
+              </div>
+            </div>
+
           </div>
 
             {/* Table */}
@@ -390,6 +402,18 @@ export default function Leaderboard() {
                       <AlertCircle className="w-3 h-3 text-red-500" />
                     </div>
                     <span>Missing</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Timestamp Columns Legend */}
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-foreground">Timestamp Columns</p>
+                    <p className="text-xs"><strong>First Eval Ended At:</strong> The earliest evaluation completion time across all benchmarks for this model+agent combination.</p>
+                    <p className="text-xs mt-1"><strong>Latest Eval Ended At:</strong> The most recent evaluation completion time across all benchmarks for this model+agent combination.</p>
                   </div>
                 </div>
               </div>

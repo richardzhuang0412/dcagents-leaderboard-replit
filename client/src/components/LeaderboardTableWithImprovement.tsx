@@ -16,7 +16,8 @@ const scrollbarHidingStyles = `
 export interface PivotedLeaderboardRowWithImprovement {
   modelName: string;
   agentName: string;
-  endedAt?: string;
+  firstEvalEndedAt?: string;
+  latestEvalEndedAt?: string;
   modelId: string;
   baseModelName: string;
   benchmarks: Record<string, {
@@ -42,7 +43,7 @@ interface LeaderboardTableWithImprovementProps {
   };
 }
 
-type SortField = 'modelName' | 'agentName' | 'baseModelName' | 'endedAt' | string; // string for dynamic benchmark names
+type SortField = 'modelName' | 'agentName' | 'baseModelName' | 'firstEvalEndedAt' | 'latestEvalEndedAt' | string; // string for dynamic benchmark names
 type SortDirection = 'asc' | 'desc' | null;
 type SortMode = 'accuracy' | 'improvement';
 
@@ -161,9 +162,12 @@ export default function LeaderboardTableWithImprovement({
         } else if (sortField === 'baseModelName') {
           aVal = a.baseModelName;
           bVal = b.baseModelName;
-        } else if (sortField === 'endedAt') {
-          aVal = a.endedAt ? new Date(a.endedAt) : undefined;
-          bVal = b.endedAt ? new Date(b.endedAt) : undefined;
+        } else if (sortField === 'firstEvalEndedAt') {
+          aVal = a.firstEvalEndedAt ? new Date(a.firstEvalEndedAt) : undefined;
+          bVal = b.firstEvalEndedAt ? new Date(b.firstEvalEndedAt) : undefined;
+        } else if (sortField === 'latestEvalEndedAt') {
+          aVal = a.latestEvalEndedAt ? new Date(a.latestEvalEndedAt) : undefined;
+          bVal = b.latestEvalEndedAt ? new Date(b.latestEvalEndedAt) : undefined;
         } else {
           // Sorting by a benchmark column
           const sortMode = sortModePerBenchmark[sortField] || 'accuracy';
@@ -332,7 +336,7 @@ export default function LeaderboardTableWithImprovement({
     );
   };
 
-  const totalColumns = 4 + visibleBenchmarks.length; // model + agent + base model + endedAt + benchmark columns
+  const totalColumns = 5 + visibleBenchmarks.length; // model + agent + base model + firstEvalEndedAt + latestEvalEndedAt + benchmark columns
 
   return (
     <>
@@ -391,12 +395,22 @@ export default function LeaderboardTableWithImprovement({
                 </th>
                 <th className="text-left px-6 py-4 min-w-[180px]">
                   <button
-                    onClick={() => handleSort('endedAt')}
+                    onClick={() => handleSort('firstEvalEndedAt')}
                     className="flex items-center gap-2 font-medium text-sm uppercase tracking-wide hover-elevate active-elevate-2 -mx-2 px-2 py-1 rounded-md"
-                    data-testid="button-sort-endedAt"
+                    data-testid="button-sort-firstEvalEndedAt"
                   >
-                    Ended At
-                    <SortIcon field="endedAt" />
+                    First Eval Ended At
+                    <SortIcon field="firstEvalEndedAt" />
+                  </button>
+                </th>
+                <th className="text-left px-6 py-4 min-w-[180px]">
+                  <button
+                    onClick={() => handleSort('latestEvalEndedAt')}
+                    className="flex items-center gap-2 font-medium text-sm uppercase tracking-wide hover-elevate active-elevate-2 -mx-2 px-2 py-1 rounded-md"
+                    data-testid="button-sort-latestEvalEndedAt"
+                  >
+                    Latest Eval Ended At
+                    <SortIcon field="latestEvalEndedAt" />
                   </button>
                 </th>
                 {visibleBenchmarks.map(benchmark => (
@@ -473,7 +487,12 @@ export default function LeaderboardTableWithImprovement({
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-muted-foreground font-mono text-sm">
-                        {row.endedAt || '—'}
+                        {row.firstEvalEndedAt || '—'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-muted-foreground font-mono text-sm">
+                        {row.latestEvalEndedAt || '—'}
                       </span>
                     </td>
                       {visibleBenchmarks.map(benchmark => (

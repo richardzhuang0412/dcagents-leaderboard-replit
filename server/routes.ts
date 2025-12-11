@@ -65,7 +65,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const groupedData = new Map<string, {
         modelName: string;
         agentName: string;
-        endedAt?: string;
+        firstEvalEndedAt?: string;
+        latestEvalEndedAt?: string;
         benchmarks: Record<string, { accuracy: number; standardError: number; hfTracesLink?: string }>;
       }>();
 
@@ -76,15 +77,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           groupedData.set(key, {
             modelName: result.modelName,
             agentName: result.agentName,
-            endedAt: result.endedAt,
+            firstEvalEndedAt: result.endedAt,
+            latestEvalEndedAt: result.endedAt,
             benchmarks: {}
           });
         }
 
         const group = groupedData.get(key)!;
-        // Update endedAt to the earliest one (since results are ordered by earliest in view)
-        if (!group.endedAt || (result.endedAt && result.endedAt < group.endedAt)) {
-          group.endedAt = result.endedAt;
+        // Update firstEvalEndedAt to the earliest timestamp
+        if (!group.firstEvalEndedAt || (result.endedAt && result.endedAt < group.firstEvalEndedAt)) {
+          group.firstEvalEndedAt = result.endedAt;
+        }
+        // Update latestEvalEndedAt to the latest timestamp
+        if (!group.latestEvalEndedAt || (result.endedAt && result.endedAt > group.latestEvalEndedAt)) {
+          group.latestEvalEndedAt = result.endedAt;
         }
         group.benchmarks[result.benchmarkName] = {
           accuracy: result.accuracy,
@@ -118,7 +124,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         agentName: string;
         modelId: string;
         baseModelName: string;
-        endedAt?: string;
+        firstEvalEndedAt?: string;
+        latestEvalEndedAt?: string;
         benchmarks: Record<string, {
           accuracy: number;
           standardError: number;
@@ -137,15 +144,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             agentName: result.agentName,
             modelId: result.modelId,
             baseModelName: result.baseModelName,
-            endedAt: result.endedAt,
+            firstEvalEndedAt: result.endedAt,
+            latestEvalEndedAt: result.endedAt,
             benchmarks: {}
           });
         }
 
         const group = groupedData.get(key)!;
-        // Update endedAt to the earliest one (since results are ordered by earliest in view)
-        if (!group.endedAt || (result.endedAt && result.endedAt < group.endedAt)) {
-          group.endedAt = result.endedAt;
+        // Update firstEvalEndedAt to the earliest timestamp
+        if (!group.firstEvalEndedAt || (result.endedAt && result.endedAt < group.firstEvalEndedAt)) {
+          group.firstEvalEndedAt = result.endedAt;
+        }
+        // Update latestEvalEndedAt to the latest timestamp
+        if (!group.latestEvalEndedAt || (result.endedAt && result.endedAt > group.latestEvalEndedAt)) {
+          group.latestEvalEndedAt = result.endedAt;
         }
         // Calculate improvement as absolute difference (percentage points)
         const improvement = result.baseModelAccuracy !== undefined
