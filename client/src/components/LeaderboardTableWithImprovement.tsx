@@ -1,7 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { BENCHMARKS_TO_EXCLUDE } from '@/config/benchmarkConfig';
 
 // Hide scrollbar while keeping scroll functionality
 const scrollbarHidingStyles = `
@@ -83,16 +82,13 @@ export default function LeaderboardTableWithImprovement({
     };
   }, [data.length]);
 
-  // Get all unique benchmark names from the data, excluding configured benchmarks
+  // Get all unique benchmark names from the data
   const allBenchmarks = useMemo(() => {
     const benchmarkSet = new Set<string>();
     data.forEach(row => {
       Object.keys(row.benchmarks).forEach(benchmark => benchmarkSet.add(benchmark));
     });
-    // Filter out excluded benchmarks
-    return Array.from(benchmarkSet)
-      .filter(benchmark => !BENCHMARKS_TO_EXCLUDE.includes(benchmark))
-      .sort();
+    return Array.from(benchmarkSet).sort();
   }, [data]);
 
   // Filter which benchmark columns to show based on search and filters
@@ -451,17 +447,24 @@ export default function LeaderboardTableWithImprovement({
                   </td>
                 </tr>
               ) : (
-                filteredAndSortedData.map((row, index) => (
-                  <tr
-                    key={`${row.modelName}-${row.agentName}`}
-                    className={`border-b border-border hover-elevate ${
-                      index % 2 === 0 ? 'bg-background' : 'bg-muted/20'
-                    }`}
-                    data-testid={`row-result-${row.modelName}-${row.agentName}`}
-                  >
-                    <td className="px-6 py-4 sticky left-0 z-20 bg-background">
-                      <span className="font-semibold text-foreground">{row.modelName}</span>
-                    </td>
+                filteredAndSortedData.map((row, index) => {
+                  const isBaseModel = row.baseModelName === 'None';
+                  const rowBgClass = isBaseModel
+                    ? 'bg-blue-100 dark:bg-blue-900/60'
+                    : index % 2 === 0 ? 'bg-background' : 'bg-muted/20';
+                  const stickyCellBgClass = isBaseModel
+                    ? 'bg-blue-100 dark:bg-blue-900/60'
+                    : 'bg-background';
+
+                  return (
+                    <tr
+                      key={`${row.modelName}-${row.agentName}`}
+                      className={`border-b border-border hover-elevate ${rowBgClass}`}
+                      data-testid={`row-result-${row.modelName}-${row.agentName}`}
+                    >
+                      <td className={`px-6 py-4 sticky left-0 z-20 ${stickyCellBgClass}`}>
+                        <span className="font-semibold text-foreground">{row.modelName}</span>
+                      </td>
                     <td className="px-6 py-4">
                       <span className="text-muted-foreground">{row.agentName}</span>
                     </td>
@@ -473,13 +476,14 @@ export default function LeaderboardTableWithImprovement({
                         {row.endedAt || '—'}
                       </span>
                     </td>
-                    {visibleBenchmarks.map(benchmark => (
-                      <td key={benchmark} className="px-6 py-4 text-right">
-                        {formatBenchmarkCell(row.benchmarks[benchmark], benchmark)}
-                      </td>
-                    ))}
-                  </tr>
-                ))
+                      {visibleBenchmarks.map(benchmark => (
+                        <td key={benchmark} className="px-6 py-4 text-right">
+                          {formatBenchmarkCell(row.benchmarks[benchmark], benchmark)}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

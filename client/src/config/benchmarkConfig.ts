@@ -3,9 +3,11 @@
  */
 
 /**
- * List of benchmarks to exclude from the leaderboard display.
- * These benchmarks are excluded to reduce visual clutter or because they're internal/deprecated.
+ * List of benchmarks to show by default in the leaderboard.
+ * All other benchmarks are available in the filter but not selected by default.
  */
-export const BENCHMARKS_TO_EXCLUDE = [
-  'clean-sandboxes-tasks-eval-set',
+export const DEFAULT_VISIBLE_BENCHMARKS = [
+  'dev_set_71_tasks',
+  'swebench-verified-random-100-folders',
+  'terminal_bench_2',
 ];
